@@ -6,4 +6,7 @@ The user interface package :mod:`!ui` contains modules to facilitate the interac
    :members:
 
 
+.. automodule:: ui.cmd
+   :members:
+
 """

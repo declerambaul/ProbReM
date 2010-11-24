@@ -13,7 +13,7 @@ from analytics.performance import time_analysis
 from prm.localdistribution import CPDTabular
 
 #from pylab import *
-#import numpy as N
+import numpy as N
 
 class CPDLearner():
     '''
@@ -85,7 +85,7 @@ class CPDTabularLearner(CPDLearner):
                     #create CPD instance for attribute
                     attr.CPD = CPDTabular(attr)
                     #we count all occurrences of the individual parent assignments
-                    counter = zeros((attr.CPD.cpdMatrix.shape[0],1))
+                    counter = N.zeros((attr.CPD.cpdMatrix.shape[0],1))
                 
                 
                     '''
@@ -162,7 +162,7 @@ class CPDTabularLearner(CPDLearner):
                     #create CPD instance for attribute
                     attr.CPD = CPDTabular(attr)
                     #we count all occurrences of the individual parent assignments
-                    counter = zeros((attr.CPD.cpdMatrix.shape[0],1))
+                    counter = N.zeros((attr.CPD.cpdMatrix.shape[0],1))
                     
                     
                     '''

@@ -346,6 +346,51 @@ class ForeignAttribute(Attribute):
         '''
         return '%s.%s'%(self.erClass.name,self.name)     
         
+
+class ExistAttribute(BinaryAttribute):
+    """
+    An Exist Attribute is a binary variable used when making inference in uncertain 
+    relationships. Reference Uncertainty implies that we don't know which objects 
+    of two associated entities are connected through the relationship. Thus we assume 
+    a full relationship, meaning that there is an object for every possible combination
+    of entity objects. If the exist attribute of a relationship oject is `1`, then the
+    object is considered to be present in the data. 
+    Relationship are usually sparse, e.g. only few connections exist. There is no need to 
+    store all possible connections, not in the data nor in the model. The relationship 
+    type is usually even more restricted (e.g. `1:n`), allowing for a efficient representation.
+    """
+    def __init__(self, name, er, hidden=False):
+        '''
+        Constructs an `Exist` variable  that can take the value True or False
+        '''        
+        Attribute.__init__(self, name, er)     
+        
+        # set domain and cardinality
+        self.domain = (0,1)
+        self.cardinality = len(self.domain)
+
+        # compute the indexing dictionary
+        for i,v in enumerate(self.domain):
+            self.indexing[v] = i
+            
+    def indexingValue(self,value):
+        '''
+        Returns the index of the `domain` list given an attribute `value`.
+        For a binary value it is faster to just return the value since it corresponds
+        to the index.
+        
+        :arg value: `0` or `1`
+        '''
+        return value
+        #return self.indexing[value]
+        
+    def __repr__(self):
+        '''
+        Returns a string representation of the instance 
+        ''' 
+        return "Exist Attribute (%s , CPD=%s)"%(self.name,self.CPD)        
+
+
         
 def topologicalSort(attributes):
     '''

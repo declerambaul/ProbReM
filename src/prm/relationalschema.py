@@ -73,7 +73,7 @@ class Relationship(ERClass):
     keys as identifiers). Note the source of confusion, `Relationship` refers to the Entity-Relationship model;
     not to be confused with the probabilistic :class:`.Dependency` which is conceptually also a relationship    
     '''
-    def __init__(self, name, type):
+    def __init__(self, name, type, uncertain):
         '''
         Constructs an Relationship instance
         '''                
@@ -109,6 +109,14 @@ class Relationship(ERClass):
         A dictionary that contains the attributes references of the relationship class
         {key : Attribute name, value: :class:`.Attribute`}
         """   
+        
+        self.uncertain = uncertain
+        """
+        If set to `True`, the objects in that relationship are uncertain. Which means any inference
+        involving probablistic dependencies whose slotchain leads through the uncertain relationship
+        requireds making inference with `reference uncertainty`
+        """
+        
         
     def __repr__(self):
         '''

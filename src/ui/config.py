@@ -5,14 +5,13 @@ Config Module :mod:`ui.config`
 :mod:`!ui.config` is used to create instances of the different building blocks for a ProbReM project, e.g. the PRM model, the data interface, the learner and the inference methods. The methods are accessed by importing the `config` module ::
 
     from ui import config
-    from probrem import Probrem
-    probremI = Probrem()
+    import probrem
 
 Then one can for example create a :class:`~!prm.prm.PRM` instance::
 
-    probremI.prmI = config.loadPRM(prmSpec)
+    probrem.prmI = config.loadPRM(prmSpec)
 
-The config module can't be executed directly
+The config module can't be executed directly.
 """
 
 import sys

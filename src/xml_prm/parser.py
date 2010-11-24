@@ -39,13 +39,13 @@ relsEl = 'Relationships'
 relEl = 'Relationship'
 relEl_name = 'name'
 relEl_foreign = 'foreign'
-relEl_from = 'from'
-relEl_to = 'to'
+relEl_uncertain = 'uncertain'
 relEl_type = 'type'
 relEl_description = 'description'
 attrEl = 'Attribute'
 attrEl_name = 'name'
 attrEl_type = 'type'
+attrEl_description = 'description'
 attrEl_pk = 'pk'
 attrEl_hidden = 'hidden'
 depstEl = 'DependencyStructure'
@@ -211,8 +211,15 @@ class PRMparser:
         if name==relEl:
             # see comment in end_element handler for a relationship.
             self.foreign = attrs[relEl_foreign]
+
+            uncertain = False
+            if relEl_uncertain in attrs: 
+                un = attrs[relEl_uncertain]
+                if un=="1" or un=="T" or un=="True":
+                    uncertain = True
             
-            self.currentER = Relationship( name = attrs[relEl_name], type = attrs[relEl_type] )
+            
+            self.currentER = Relationship( name = attrs[relEl_name], type = attrs[relEl_type],uncertain=uncertain )
             self.relationships[attrs[relEl_name]] = self.currentER 
         ''' Create Attribute class '''
         if name==attrEl: 
@@ -221,10 +228,12 @@ class PRMparser:
             atype = attrs[attrEl_type]
                                     
             attrDef = None       
-            if relEl_description in attrs: 
-                attrDef = attrs[relEl_description]      
+            if attrEl_description in attrs: 
+                attrDef = attrs[attrEl_description]      
                           
             attribute = attributeFactory(name, er , atype, attrDef )            
+            
+            # Adding the new attribute object to data structures
             self.attributes_temp[attribute.fullname] = attribute
             self.attributes[attribute.fullname] = attribute
             
@@ -319,20 +328,19 @@ class PRMparser:
             
             At this point all names must be unique, therefore the attribute name contains all information. We can only configure this after we instantiated all attributes (= when closing the relationship tag).            
             '''
-            # e.g. 'User.user_id:buyer_id,User.user_id:seller_id' where the first part identifies the attribute and the second is an optional alias name
-            self.foreign = [fk.split(':') for fk in self.foreign.split(',')]            
             
             # Is there an attribute defined to be the primary key we don't take the set of foreign keys as primary key
             pk_defined = False
             if len(self.currentER.pk) > 0:
                 pk_defined = True
             
+            # e.g. 'User.user_id:buyer_id,User.user_id:seller_id' where the first part identifies the attribute and the second is an optional alias name
+            self.foreign = [fk.split(':') for fk in self.foreign.split(',')]            
+            
             for rpk in self.foreign:
                 #add foreign key for the relationship primary key is always defined
                 fk = rpk[0]
                 #an alias is only defined if the relationship primary key name is different from the foreign key name
-                                                                
-                
                 # (entity,attribute) , e.g. User.item_id or User.pk
                 (ent,a) = fk.split('.')
                 #Entity instance
@@ -375,6 +383,15 @@ class PRMparser:
             #list of entities associated with the current relationship    
             self.currentER.entities = self.currentER.foreign.keys()
             
+            # Reference Uncertainty
+            if self.currentER.uncertain:
+                print "UPDATE DOCUMENTATION"
+                # Creating the exist attribute for the uncertain relationship
+                ex = ExistAttribute(name='exist',er=self.currentER)
+                # Adding ex to dict of attributes
+                self.attributes[ex.fullname] = ex                
+                self.attributes_temp[ex.fullname] = ex
+                
             
                                                     
             # assigning all attributes and resetting the temp dict for the attributes

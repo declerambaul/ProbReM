@@ -23,14 +23,14 @@ from analytics.performance import time_analysis
 
 
 # BURNIN = 0
-BURNIN = 10000
+BURNIN = 100
 '''Number of burn in samples 
 '''
 
 
 # ITER = 4
 #ITER = 30000
-ITER = 100000
+ITER = 1000
 '''Number of samples to collect
 '''
 

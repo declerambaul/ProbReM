@@ -119,11 +119,6 @@ class Query():
         ''' List of :class:`.Qvariable` instances representing evidence variables '''
         
         
-        # Attribute Evidence Lookup Not Used anymore
-        self.attrEvidenceLookup = None        
-        self.computeAttrEvidenceLookup()
-        
-        
         self.objEvidenceLookup = None
         '''
         Dictionary used to check whether attribute objects are part of the evidence. Format:
@@ -142,21 +137,6 @@ class Query():
         
         self.computeObjEvidenceLookup()
         
-        
-    def __computeAttrEvidenceLookup(self):
-        # not used anymore
-        ''' 
-        A very simple and not very expressive evidence lookup method that just allows to specify if object
-        of a certain attribute are in the evidence or not.
-        '''
-        self.attrEvidenceLookup = []
-        if self.evidence is not None:
-            for qvar in self.evidence:
-                self.attrEvidenceLookup.append(qvar.attr)
-    
-    def __attrInEvidence(self,attr):
-        # not used anymore
-        return attr in self.attrEvidenceLookup
     
     
     def computeObjEvidenceLookup(self):
