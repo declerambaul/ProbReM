@@ -5,6 +5,7 @@ Performance Module :mod:`analytics.performance`
 Main module for performance analyis of the Probrem package
 """
 
+import logging
 import time
 import numpy as N
 
@@ -37,16 +38,16 @@ def time_analysis(caller):
         t_end =  time.time() #end time
         measurments[caller.__name__].append((t_end-t_start))
         return r        
-        #print 'Executed %s in %s s'%(caller.__name__,(t_end-t_start))    
         
-        #print measurments
+        
+        
     return new_caller
     
 def displayTimeAnalysis():
     ''' Displays statistics about the running times of all methods that are decorated with the @time_analysis'''
     for (caller,times) in measurments.items():
-        print '%s() exution time:'%(caller)
-        print '\tNumber of calls = %s'%(len(times))
+        logging.info('%s() exution time:'%(caller))
+        logging.info('\tNumber of calls = %s'%(len(times)))
         if len(times) != 0:
-            print '\tTotal = %5e / Min = %5e / Max = %5e / Mean = %5e / Var = %5e'%(N.sum(times),N.min(times),N.max(times),N.mean(times),N.var(times))
+            logging.info('\tTotal = %5e \n\tMean = %5e \n\tVar = %5e  \n\tMin = %5e \n\tMax = %5e '%(N.sum(times),N.mean(times),N.var(times),N.min(times),N.max(times)))
 

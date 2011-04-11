@@ -24,28 +24,18 @@ class CPDLearner():
         ''' 
         Creates CPDLearner. It now has to be configured using the self.configure() method.
         '''
-        self.prmToLearn = None 
-        self.di = None
+        
+        import prm.prm as PRM
+        import data.datainterface as DI
+        self.prmToLearn = PRM 
+        self.di = DI
     
     def __repr__(self):            
         return "%s - PRM %s - DI %s"%(self.__class__.__name__ ,self.prmToLearn.name,self.di.name)
         
-    def configure(self,prmToLearn,di,learnCPDs=False,saveCPDs=False):
-        '''
-        Tells the CPD learner which PRM instance and which data interface it should use.
-        '''
-        self.prmToLearn = prmToLearn 
-        self.di = di # data interface  
-        
-        if learnCPDs:
-            #self.learnCPDsCount(saveDistributions=saveCPDs,forceLearning=True)
-            self.learnCPDsFull(saveDistributions=saveCPDs,forceLearning=True)
-
-    def learnCPDsFull(self):
-        raise Exception("learnCPD not implemented in the CPDLearner instance")
+    def learnCPDs(self,saveDistributions=False,forceLearning=False):
+        raise Exception("learnCPDs not implemented in the CPDLearner instance")
     
-    def learnCPDsCount(self):
-        raise Exception("learnCPD not implemented in the CPDLearner instance")
     
     
 class CPDTabularLearner(CPDLearner):
@@ -58,6 +48,15 @@ class CPDTabularLearner(CPDLearner):
         
         CPDLearner.__init__(self)                                                                         
         
+    
+    def learnCPDs(self,saveDistributions=False,forceLearning=False):
+        '''
+        Depending on which method is standard for learning CPDs, either
+        :meth:`.learnCPDsCount` or :meth:`.learnCPDsFull` is executed.
+        '''
+        
+        #self.learnCPDsCount(saveDistributions,forceLearning)
+        self.learnCPDsFull(saveDistributions,forceLearning)
         
     #@time_analysis
     def learnCPDsCount(self,saveDistributions=False,forceLearning=False):

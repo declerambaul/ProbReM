@@ -20,7 +20,7 @@ There is a probabilistic dependency between the :math:`a = \mathit{Amount}` attr
 
 
 .. figure:: figures/poliCont-probabilisticStructure.png
-    :scale: 40 %    
+    :width: 90 %    
 
 
 
@@ -30,7 +30,7 @@ The Data
 In order to model the data with a PRM, we considered a subset of the data, consisting of the federal contributions for the cycle 2007-2008.  The recipients are either individuals running for Congress (House or Senate), Political Action Committees (PACs) or presidential candidates (Barack Obama, John McCain). To guarantee statistical significance, only recipients who received more than 1000 contributions are included in the model. The political affiliation of candidates for Congress is easily available. PACs on the other hand usually redistribute their donations to candidates of both parties, which makes it harder to determine their affiliation. Each contributor is associated with a name, the US state where the donation was made, and a industry category (e.g. Oil \& Gas, Gun Rights, Retired). The size of the dataset and the cardinality of the attributes are displayed in  Table below.  We augmented the data with information about the contributor state: a binary variable indicating the income level (above or below the US average) and a binary variable for the political affiliation of the state based on the outcome of the previous presidential election. 
 
 .. figure:: figures/data_size.png
-    :scale: 100 %    
+    :width: 90 %    
 
 After the data is curated, e.g. only recipients with a minimum number of contributions and the `amount` needs to discretized into reasonable bins. The data is stored in a SQLite database './data/policont.sqlite' based on the following schema::
 

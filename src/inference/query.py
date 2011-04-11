@@ -10,7 +10,7 @@ Two auxiliary data structures are used to specify event and evidence variables,
 
 '''
 
-from network.groundBN import computeID
+from network.vertices import computeID
 
 from analytics.performance import time_analysis
 
@@ -19,12 +19,14 @@ class Qvariable():
     A :class:`Qvariable` instance induces a set of attribute objects (:class:`.GBNvertex` instances) that are used for specifying event 
     and evidence variables when making inference.    
     '''
-    def __init__(self, erClass, objs, attr, values=None):
+    def __init__(self, attr, objsVar, values=None):
         
-        self.erClass = erClass
+        self.erClass = attr.erClass
+        '''
+        :class:`.ObjsVariable` instance.
+        '''
 
-
-        self.objs = objs
+        self.objs = objsVar
         ''' 
         :class:`.ObjsVariable` instance.
         '''
@@ -44,51 +46,67 @@ class Qvariable():
         
 
 
-def createQvar(fullname,objsV):
+def createQvar(attrName,objsVar=None,objsConstraint=None,objsPkValues=None):
     '''
     Creats a :class:`Qvariable` from the string name of an :class:`.Attribute` instance, e.g. `Professor.fame`
     
     :arg fullname: Full name of an :class:`.Attribute`
-    :arg objsV: :class:`.ObjsVariable` instance
+    :arg objsVar: :class:`.ObjsVariable` instance
+    :arg objsConstraint: Type for the :class:`.ObjsVariable` instance, :attr:`.constraint`
+    :arg objsPkValues: List of sets of primary keys., :attr:`.pkValues`
     :returns: :class:`Qvariable` instance
     '''     
-    attr = prmI.attributes[fullname]
+    from prm import prm
+    
+    attr = prm.attributes[attrName]
     erClass = attr.erClass 
+    
+    # If an ObjsVariable was passed as argument, use it. Otherwise construct one with 
+    # the constraint and pkValues
+    if objsVar is None:
+        objsVar = ObjsVariable(objsConstraint,objsPkValues)
 
-    return Qvariable(erClass, objsV, attr)
+    return Qvariable(attr, objsVar )
 
 
 
 class ObjsVariable():
     '''
     Data structure that is used to define a set of attribute objects that are associated with a specific
-    :class:`Qvariable` instance.
+    :class:`Qvariable` instance. 
     
-    :attr:`.pkValues` is a list of primary keys of the attribute class that the :class:`.Qvariable` instance is associated with. The `constraint` allows to specify a subset of all attribute objects in an expressive manner
+    
+    
+    :attr:`.pkValues` is a list of primary keys of the attribute class that the :class:`.Qvariable` instance is associated with. The :attr:`.constraint` allows to specify a subset of all attribute objects in an expressive manner
         
         * inclusive 'incl' : only these attribute objects
         * exclusive 'excl' : all but these attribute objects
-                
+        
+        
+    As an example, to create a query for an :class:`Entity`::
+    
+        objsStudent = ObjsVariable('incl', [(1,),(4,),(11,)])
+    
+    Or in case of a query for a :class:`Relationship`::
+    
+        objsAdvisor = ObjsVariable('incl', [(1,3),(4,3),(11,3)])    
+    
     '''
     
     exclusive = 'excl'
     inclusive = 'incl'
     
     def __init__(self,constraint,pkValues,complete=True):
-        '''
-        constraint - ALL BUT THESE (excl) or ONLY THESE (incl)
-        objs - list of objs     [ (pk),(pk),(pk),(pk),...] if erClass is a Entity
-                                [(pk1,pk2),(pk1,pk2),(pk1,pk2),(pk1,pk2),....] if erClass is a Relationship
-        '''
+
         self.constraint = constraint
         """
         Constraint is either 'excl' or 'incl'
         """
         self.pkValues = None
         """
-        List of primary keys, e.g.
+        List of sets of primary keys. Even in case of an :class:`Entity` with only one primary key, the list needs to consist of sets, e.g.
         
-        * [ (pk),(pk),(pk),(pk),...] in case of an :class:`Entity`
+        * [ (pk,),(pk,),(pk,),(pk,),...] in case of an :class:`Entity`
         * [(pk1,pk2),(pk1,pk2),(pk1,pk2),(pk1,pk2),....] in case of a :class:`Relationship`
         """
         
@@ -195,7 +213,7 @@ class Query():
         #print r
         eventS = " ".join([qvar.attr.fullname for qvar in self.event])
         if self.evidence != None:
-            evidenceS = " ".join([qvar.attr.fullname for qvar in self.evidence])
+            evidenceS = ",".join([qvar.attr.fullname for qvar in self.evidence])
             return 'P(%s | %s)'%(eventS,evidenceS)                        
         return 'P(%s)'%(eventS)
             

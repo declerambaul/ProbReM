@@ -106,7 +106,10 @@ class CPDTabular(CPD):
         
         u = N.random.uniform()
         
+        # If the attribute doesn't have any parents, the CPD is a 1 x n vector and 
+        # thus can't be indexed 
         cumRow = self.cumMatrix[ri,:]
+        # cumRow = N.atleast_2d(self.cumMatrix)[ri,:]
         for i,cumprop in enumerate(cumRow):
             if u <= cumprop:
                 return self.attr.domain[i]
@@ -189,7 +192,8 @@ class CPDTabular(CPD):
         # for i in range(0,(self.cumMatrix.shape[1]-1)):
         #     self.cumMatrix[:,(i+1)] = self.cumMatrix[:,(i+1)] + self.cumMatrix[:,i]
         
-        self.cumMatrix = self.cpdMatrix.cumsum(axis=1)
+        
+        self.cumMatrix = N.atleast_2d(self.cpdMatrix).cumsum(axis=1)
         
         
     def __repr__(self):
@@ -215,14 +219,16 @@ class CPDTabular(CPD):
                 self.indexingMultiplier[i] *= self.attr.parents[j].cardinality
                 
         
-    def save(self):
+    def save(self,relPath='./localdistributions'):
         """
         Saves `cpdMatrix` to disk using `numpy.save` and outputs the XML specification that can be added to the PRM specification.
-        """
+        
+        :arg relPath: Relative path to the local distribution files, starting from the directory where the model is instantiated from.
+        """        
         fname = self.attr.name  
         if len(self.attr.parents)!=0:
             fname = '%s_%s'%(fname,''.join([pa.name for pa in self.attr.parents]))
-        locDistPath = './localdistributions/%s'%(fname)
+        locDistPath = '%s/%s'%(relPath,fname)
         #print 'Saving CPDmatrix.npy and attrname.xml for %s to %s -> include reference in PRM xml'%(self.attr.name,locDistPath)
         N.save(locDistPath,self.cpdMatrix)
         locDistXML = "<?xml version='1.0' standalone='no' ?><LocalDistribution attribute='%s'><TabularCPD file='%s.npy'/></LocalDistribution>"%(self.attr.fullname,locDistPath)

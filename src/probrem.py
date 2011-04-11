@@ -1,22 +1,22 @@
 '''
-.. |probrem| replace:: **P**\ rob\ **R**\ e\ **M**  
+.. |probremC| replace:: **P**\ rob\ **R**\ e\ **M**  
 
-The module :mod:`probrem.Probrem` is the basis of a |probrem| framework. :mod:`probrem.Probrem` has to be initialised by a separate script, it can't be executed.
+The module :mod:`probrem.Probrem` is the basis of a |probremC| framework. :mod:`probrem.Probrem` has to be initialised by a separate script, it can't be executed.
 '''
 
 if __name__ == '__main__':
     raise Exception("You are running stand alone Probrem instance. You shouldn't be doing that. See README in root folder")
     
 
-prmI = None
-"""The instance of the PRM model of type :class:`.PRM` 
+import prm.prm as PRM
+"""The instance of the PRM model of type :mod:`prm.prm` 
 """
-diI = None
-"""The data interface instance is an implementation of :class:`data.datainterface.DataInterface` 
+import data.datainterface as DI
+"""The data interface instance is implemented in :mod:`data.datainterface` 
 """
-inferenceI = None
-"""The inference engine instance :class:`inference.engine.Engine`, configured with a inference method
+import inference.engine as engine
+"""The inference engine is implemented in the :mod:`inference.engine`.
 """
-learnersI = {}
+learners = {}
 """A dictionary of learners instances, e.g. { 'cpdLearnerName' : :class:`learners.cpdlearners.CPDTabularLearner` } 
 """

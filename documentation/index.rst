@@ -25,8 +25,7 @@ Several :ref:`frameworks<relatedResearch>` have so far been proposed in Statisti
 * Markov Chain Monte Carlo (MCMC) methods are used for approximate inference
 
 
-|probrem| is being developed at the `Reasoning and Learning Lab <http://rl.cs.mcgill.ca/>`_ at McGill University,  by `Fabian Kaelin <http://cs.mcgill.ca/~fkaeli>`_ under the supervision of `Doina Precup <http://www.cs.mcgill.ca/~dprecup/>`_.
-This software is free to use for academic research only.
+|probrem| is being developed by `Fabian Kaelin <http://cs.mcgill.ca/~fkaeli>`_ at `McGill University <http://mcgill.ca/>`_ and the `National Institute of Informatics <http://www.nii.ac.jp/en/?page_id=59&lang=english>`_. This software is free to use for academic research only.
 
 
 

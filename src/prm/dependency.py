@@ -4,48 +4,65 @@ class Dependency():
     '''
 
 
-    def __init__(self, name, parent, child, constraint, aggregator):
+    def __init__(self, name, parent, child, constraint, aggregator, attributes):
         '''
         Constructs a dependency between two attributes. 
+
+        'attributes' is a dictionary with all instantiated attributes which is needed
+        to extract the slotchain from a 'constraint' passed as string
         '''
         
         self.name=name
-        """Unique name of the dependency
-        """
+        '''Unique name of the dependency
+        '''
         self.parent = parent
-        """The `parent` is an :class:`.Attribute` instance 
-        """
+        '''The `parent` is an :class:`.Attribute` instance 
+        '''
         self.child = child
-        """The `child` :class:`.Attribute` instance is the dependent variable.
-        """
+        '''The `child` :class:`.Attribute` instance is the dependent variable.
+        '''
         self.constraint = constraint
-        """The `constraint` of a dependency defines how the attribute objects in the relational skeleton
+        '''The `constraint` of a dependency defines how the attribute objects in the relational skeleton
         are connected. Introduced by Heckerman et al. in the `DAPER` model, the concept of a constraint is a generalized 
         version of the `slotchain` introduced by Getoor et al.
-        """
+        '''
         self.aggregator = aggregator
-        """
+        '''
         Aggregation is necessary when a dependency is of type `1:n` or `m:n` as there will be multiple
         parent objects mapping to a child object's CPD that has only one parameter for this parent attribute.
         Aggregation can be any function :math:`f(pa1,pa2,...) = pa_{aggr}` , see :mod:`data.aggregation`
-        """
+        '''
         self.slotchain = []
-        """
+        '''
         Even though the probabilistic dependency uses the `constraint` when specifying a PRM model,
         often the `constraint` results in the traditional slotchain, the 'path' through the relational 
         schema that links the parent and child attribute via a list of entities and relationships, connected
         by foreign keys.
         The elements in the list `slotchain` are interchangeably [..., :class:`.Entity`, :class:`.Relationship`, :class:`.Entity`,... ]                
-        """        
+        '''        
         self.slotchain_string = []
-        """
-        List containing the string representation (e.g. `name`) of the slotchain entities/relationships
-        """
-        self.slotchain_attr_string = []        
-        """
-        List of the string represenation of the attributes that define the slotchain
-        """
-        
+        '''
+        List containing the string representation (e.g. `Professor`, `advisor`) of the slotchain entities/relationships
+        '''
+        self.slotchain_attr_string = []
+        '''
+        List of the string represenation of the attributes that define the slotchain, e.g. `Professor.professor_id=advisor.professor_id`
+        '''
+        self.slotchain_erclass_exclusive = {}
+        '''
+        Special Dictionary representation of the slotchain. The key is an Entity, and the value
+        is basically `self.slotchain_attr_string` without all entries that contain the key entity
+         {key = :class:`.ERClass` : value = list of string constraints }. 
+        '''
+
+        #we compute the slotchain associated with this dependency in case no constraint has been defined. Otherwise we extract the slotchain from the constraint        
+        if self.constraint is None:                            
+            self.computeSlotChain()            
+        else:
+            # since the constraint is a string, the methods needs access to all attributes
+            self.configureConstraint(attributes)
+
+
     def configureConstraint(self,attributes):
         """
         If a constraint has been defined in the specification, e.g. in the following form::
@@ -58,6 +75,7 @@ class Dependency():
         
         :arg attributes: All :class:`.Attribute` instances in the model        
         """    
+
         if self.constraint is None:
             raise Exception('Constraint for %s is None'%self.name)
         
@@ -70,14 +88,29 @@ class Dependency():
         for sl_attr in slotchain_attr_temp:
             #extract from attribute and to attribute            
             (fromA_str,toA_str) = sl_attr.split('=')
-            formA = attributes[fromA_str]
+            fromA = attributes[fromA_str]
             toA = attributes[toA_str]
-            addToSlotchain(formA.erClass)
+            addToSlotchain(fromA.erClass)
             addToSlotchain(toA.erClass)
             
-            self.slotchain_attr_string.append('%s=%s'%(formA.fullname,toA.fullname))
+            const_str = '%s=%s'%(fromA.fullname,toA.fullname)
+            self.slotchain_attr_string.append(const_str)
+
+
         
+        # configuring self.slotchain_erclass_exclusive
+        for er in self.slotchain:
+            self.slotchain_erclass_exclusive[er] = []
         
+            for const_str in self.slotchain_attr_string:
+                (fromA_str,toA_str) = const_str.split('=')
+                fromA = attributes[fromA_str]
+                toA = attributes[toA_str]
+
+                if fromA.erClass != er and toA.erClass != er:                    
+                    self.slotchain_erclass_exclusive[er].append(const_str)
+
+
         #print self.slotchain_attr_string
         self.slotchain_string = [er.name for er in self.slotchain]    
         
@@ -103,10 +136,15 @@ class Dependency():
         if self.child.erClass == self.parent.erClass:            
             pathFound = True
             self.slotchain = [self.child.erClass]
-        
+        else:
+            # if the dep is not within one entity/relationship
+            print 'WARNING. No slotchain specified for %s. It will be computed by a depth-first-search, however it is advised to specify it in the model'%(self.name)                
+                        
         #slot chain over multiple erClasses
         while not pathFound:
-                    
+            
+
+
             tempCSsCopy = tempSCs[:]
             tempSCs = []
             for sc in tempCSsCopy:
@@ -175,7 +213,10 @@ class Dependency():
             st +=  '<-'+str(er.name)
                             
         return st[2:]    
-            
+    
+    @property
+    def uncertain(self):
+        return False        
         
     def __repr__(self):
         '''
@@ -183,4 +224,56 @@ class Dependency():
         ''' 
         return "Dependency (%s, Parent=%s, Child=%s SlotChain:%s)"%(self.name, self.parent.fullname,self.child.fullname,self.slotchainToString())        
         
+
+
+class UncertainDependency(Dependency):
+    '''
+    Reference uncertainty introduces uncertainty about the structure of the data itself, e.g. the entries of a relationship table of an ER diagram, and thus the state space of the Markov Chain increases considerably. We associate a binary `exist` variable with every possible entry in uncertain relationship tables. As the number of `exist' attributes grows exponentially with the size of the tables, inference becomes intractable. We avoid the explosion of the state space by introducing a `constraint` attribute that enforces certain structural properties, e.g. a *1:n* relationship. However, this results in complex probabilistic dependencies among the `exist` objects. 
+    A more involved Metropolis-Hastings algorithm is required that samples `exist` objects using an appropriate proposal distribution. A proposal is an assignment to all `exist` objects associated with one `constraint` object, which allows us to introduce probabilistic dependencies that would not be allowed in a traditional PRM.    
+    '''
+
+    def __init__(self, name, parent, child, constraint, aggregator,attributes):
+        '''
+        'attributes' is a dictionary with all instantiated attributes which is needed
+        to extract the slotchain from a 'constraint' passed as string
+        '''
+
+        Dependency.__init__(self, name, parent, child, constraint, aggregator,attributes)
+
         
+        self.uncertainRelationship = None
+        """
+        If :attr:`.uncertainRelationship` is `True`, then `uncertainRelationship` will point to the uncertain relationship :class:`.UncertainRelationship`
+        """
+
+        self.nAttribute = None
+        '''
+        Reference to the :class:`.Attribute`, i.e. a foreign key in an entity instance, that is on the `n`-side of the relationship. It is either the parent or the child.
+        '''
+
+        self.kAttribute = None
+        '''
+        Reference to the :class:`.Attribute`, i.e. a foreign key in an entity instance, that is on the `k`-side of the relationship. It is either the parent or the child.
+        '''
+
+        self.nIsParent = None
+        '''
+        Is `True` if `self.nAttribute` and `self.parent` refer to the same attribute instance
+        '''
+
+    @property
+    def uncertain(self):
+        return True
+
+    def __repr__(self):
+        '''
+        Returns a string representation of a dependency 
+        ''' 
+        return "UncertainDependency (%s, Parent=%s, Child=%s SlotChain:%s,Uncertain Relationship:%s)"%(self.name, self.parent.fullname,self.child.fullname,self.slotchainToString(),self.uncertainRelationship.name)        
+
+
+    
+
+
+
+

@@ -12,7 +12,7 @@ Overview
 
 
 .. figure:: figures/prm_illustration.png
-    :scale: 100 %    
+    :width: 90 %    
 
     |probrem| framework structure
 

@@ -2,7 +2,7 @@
 The class :class:`~!.DataSetInterface` specifies a set of methods that are need to be implemented by a database specific data interface. Currently the framework supports only `SQLite <www.sqlite.org>`_ which is implemented in :class:`data.sqliteinterface.SQLiteDI`. Implementing support for other SQL based database systems, e.g. MySQL, should be straight forward. Support for other database systems would require more effort.
 '''
 
-
+import logging
 
 import sqlite3 
 from itertools import repeat
@@ -10,7 +10,7 @@ from itertools import repeat
 from analytics.performance import time_analysis
 
 
-from data.datainterface import DataInterface,DataSetInterface
+from data.datainterface import DataSetInterface
 
 
 
@@ -39,7 +39,7 @@ class SQLiteDI(DataSetInterface):
             """
             
         except sqlite3.Error, e:            
-            print "An error occurred:", e.args[0]
+            logging.debug("An error occurred:", e.args[0])
      
      
     def loadCountCPDdata(self, attribute):
@@ -91,7 +91,7 @@ class SQLiteDI(DataSetInterface):
         We execute the query and return the result set with the ordering of the queried 
         attributes
         '''        
-        #print sqlQuery
+        #logging.debug(sqlQuery)
         self.cur.execute(sqlQuery)
 
 
@@ -164,7 +164,7 @@ class SQLiteDI(DataSetInterface):
         We execute the query and return the result set with the ordering of the queried 
         attributes
         '''        
-        #print sqlQuery
+        #logging.debug(sqlQuery)
         self.cur.execute(sqlQuery)
 
 
@@ -223,14 +223,15 @@ class SQLiteDI(DataSetInterface):
         We execute the query and return the result set with the ordering of the queried 
         attributes
         '''        
-        #print sqlQuery
+        #logging.debug(sqlQuery)
         self.cur.execute(sqlQuery)        
                 
     #@time_analysis
     def loadObjects(self, qvar):
         '''
-        When unrolling a Ground Bayes Net the inference engine :class:`inference.engine.Engine` processes a set of event
-        and evidence variables that are of type :class:`inference.query.Qvariable`. The method `self.loadObjects()` executes 
+        When unrolling a Ground Bayes Net the inference engine :mod:`inference.engine` processes a set of 
+        event and evidence variables that are of type :class:`inference.query.Qvariable`. 
+        The method `self.loadObjects()` executes 
         a SQL query that returns the set of all attribute objects that satisfy the constraints of `qvar`
         
         The result set will have the following structure : [attribute, pk1 , pk2, ....], e.g.
@@ -259,14 +260,9 @@ class SQLiteDI(DataSetInterface):
         '''
         query_where = [' AND '.join(['%s=%s'%(pk.fullname,pkVal) for (pk,pkVal) in zip(pks,pksValue)]) for (pks, pksValue) in zip(repeat(qvar.attr.erClass.pk), qvar.objs.pkValues)]
         query_where = ['(%s)'%pkStr for pkStr in query_where]
-        #print query_where
+        
         sqlWhere = ' OR '.join(query_where)        
-        #print sqlWhere
-        
-        #sqlWhere = " AND ".join(map( lambda (a,val): '%s=%s'%(a.fullname,val), qvar.objs.pks ))
-        
-        
-        
+                                        
         '''
         sqlWhere = ''
         if qvar.erClass.isEntity():
@@ -274,15 +270,14 @@ class SQLiteDI(DataSetInterface):
         else:
             sqlWhere = " AND ".join(map( lambda (a,val): '%s=%s'%(a.fullname,val), qvar.obj.items() ))
         '''
-        
-        #print sqlWhere
+                
                         
         if sqlWhere =='':
             sqlQuery = 'SELECT %s FROM %s;'%(sqlAttribute,sqlTable)
         else:
             sqlQuery = 'SELECT %s FROM %s WHERE %s;'%(sqlAttribute,sqlTable,sqlWhere)
         
-        #print sqlQuery
+        #logging.debug(sqlQuery)
         
         self.cur.execute(sqlQuery)
         
@@ -381,13 +376,13 @@ class SQLiteDI(DataSetInterface):
         
                 
         
-        #HACK HACK HACK : just remove objects where clause (also introduced hack in engine.py)
-        if len(query_obj)>900:
-            if sqlWhere!='':
-                sqlQuery = "SELECT %s FROM %s WHERE %s;"%(sqlAttr,sqlFrom,sqlWhere)                         
-            else:
-                sqlQuery = "SELECT %s FROM %s;"%(sqlAttr,sqlFrom)                         
-            #print 'WARNING : QUERY TOO LONG'
+        # #HACK HACK HACK : just remove objects where clause (also introduced hack in engine.py)
+        # if len(query_obj)>900:
+        #     if sqlWhere!='':
+        #         sqlQuery = "SELECT %s FROM %s WHERE %s;"%(sqlAttr,sqlFrom,sqlWhere)                         
+        #     else:
+        #         sqlQuery = "SELECT %s FROM %s;"%(sqlAttr,sqlFrom)                         
+        #     #print 'WARNING : QUERY TOO LONG'
             
         
         #print '\nLOAD parents for dep %s:\n%s\n'%(dep.name,sqlQuery)
@@ -457,13 +452,13 @@ class SQLiteDI(DataSetInterface):
             #no slotchain
             sqlQuery = "SELECT %s FROM %s WHERE (%s);"%(sqlAttr,sqlFrom,sqlObj) 
         
-        #HACK HACK HACK : just remove objects where clause (also introduced hack in engine.py)
-        if len(query_obj)>900:
-            if sqlWhere!='':
-                sqlQuery = "SELECT %s FROM %s WHERE %s;"%(sqlAttr,sqlFrom,sqlWhere)                         
-            else:
-                sqlQuery = "SELECT %s FROM %s;"%(sqlAttr,sqlFrom)                         
-            #print 'WARNING : QUERY TOO LONG'
+        # #HACK HACK HACK : just remove objects where clause (also introduced hack in engine.py)
+        # if len(query_obj)>900:
+        #     if sqlWhere!='':
+        #         sqlQuery = "SELECT %s FROM %s WHERE %s;"%(sqlAttr,sqlFrom,sqlWhere)                         
+        #     else:
+        #         sqlQuery = "SELECT %s FROM %s;"%(sqlAttr,sqlFrom)                         
+        #     #print 'WARNING : QUERY TOO LONG'
         
         #print '\nLOAD children for dep %s:\n%s\n'%(dep.name,sqlQuery)
         self.cur.execute(sqlQuery)
@@ -502,7 +497,7 @@ class SQLiteDI(DataSetInterface):
             # add parent attributes to query_attrs list
             # merge the table names in query_tables
             # merge where statements (e.g. User.user_id=rates.user_id)
-            #print dep.aggregator
+            
             if dep.aggregator is None: # n:1 or 1:1 dependency type 
                 #attributes
                 query_attrs.extend(dep.parent.erClass.pk_string)
@@ -530,26 +525,90 @@ class SQLiteDI(DataSetInterface):
             for (pk_i,obj_i) in zip(attr.erClass.pk,v.obj):
                 query_obj.append('%s=%s'%(pk_i.fullname,obj_i))
             
-        #print query_attrs
+        
         sqlAttr = ','.join(query_attrs)
         sqlFrom = ','.join(query_tables)
         sqlWhere = ' AND '.join(query_where)
         sqlObj = ' OR '.join(query_obj)
         
         sqlQuery = "SELECT %s FROM %s WHERE %s AND (%s);"%(sqlAttr,sqlFrom,sqlWhere,sqlObj) 
-        #print sqlQuery
+        #logging.debug(sqlQuery)
         self.cur.execute(sqlQuery)
+
+    def loadAttributeObjects(self, attr ):
+        '''
+        All attribute objects of the attribute `attr` are queried.
+        The result set will consist of rows in the following format:
         
+        |   attr.pk1,attr.pk2,........,attr.val
+        |   < attr indentification > < attr  > 
+
+        :arg attr: :class:`.Attribute`
+        '''
+
+        sqlAttribute = '%s,%s'%(",".join( [pk.fullname for pk in attr.erClass.pk ] ),attr.fullname)
+        
+        
+        # We are only loading data from one table
+        sqlTable = attr.erClass.name
+                
+       
+        sqlQuery = 'SELECT %s FROM %s;'%(sqlAttribute,sqlTable)
+        
+        # logging.debug(sqlQuery)
+        
+        self.cur.execute(sqlQuery)
+
+    def loadExistParents(self, dep, existdep ):
+        '''
+        In the case of reference uncertainty, the exist attributes have a set of parents that need to be included in the ground Bayesian network. The SQL query needed is constructed in this method, the resultset will be of the following format. The `k-entity` references the entity on the `k` side of the `n:k` relationship (i.e. `Professor` in the student/prof example from Pasula). The primary key of the `k-entity` is used to identify 
+
+        
+        |   k_entity.pk1,  dep.parent.pk1,dep.parent.pk2,.....,dep.parent.val
+        |   < k entity id >< parent indentification >         < parent value > 
+
+        :arg dep: :class:`.UncertainDependency`
+        :arg existdep: :class:`.Dependency` with the exist attribute as child
+        '''
+
+
+        k_attr_id = ",".join( [pk.fullname for pk in dep.kAttribute.erClass.pk ])
+        parent_id = ",".join( [pk.fullname for pk in existdep.parent.erClass.pk ])
+        parent_val = existdep.parent.fullname
+
+
+        sqlAttribute = '%s,%s,%s'%(k_attr_id,parent_id,parent_val)
+        
+        tables = []
+        for er in existdep.slotchain:
+            if not er==dep.uncertainRelationship:
+                # there are no entries in the database table of the uncertain relationship
+                tables.append(er.name)
+        sqlTable = ','.join(tables)
+
+
+        if not len(existdep.slotchain_erclass_exclusive[dep.uncertainRelationship]) == 0:
+            sqlWhere = ' AND '.join(existdep.slotchain_erclass_exclusive[dep.uncertainRelationship])
+
+            sqlQuery = 'SELECT %s FROM %s WHERE %s;'%(sqlAttribute,sqlTable,sqlWhere)
+                
+        else:
+            # no where statements
+            sqlQuery = 'SELECT %s FROM %s;'%(sqlAttribute,sqlTable)
+        
+        logging.debug(sqlQuery)
+        
+        self.cur.execute(sqlQuery)
+
     
     def retrieveRow(self):
         '''
         After executing a `loadXXX()` method, the cursor `self.cur` contains the result set
         for a specific SQL query. This method returns the next row in the result set, which 
-        allows a caller, e.g. :meth:`learners.cpdlearners.CPDTabularLearner.learnCPDsFull` or :meth:`inference.engine.Engine.unrollGBN`, to iterate over all rows without knowledge about the data interface.
+        allows a caller, e.g. :meth:`learners.cpdlearners.CPDTabularLearner.learnCPDsFull` or :meth:`inference.engine.unrollGBN`, to iterate over all rows without knowledge about the data interface.
         '''
         return self.cur.fetchone()
 
-    #@time_analysis
     def resultSet(self):
         '''
         We return the the cursor which is an iterable result set of the executed query (after executing a `loadXXX()` method).

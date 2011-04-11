@@ -8,7 +8,7 @@ The :mod:`!analytics.visualization` module can be used to create desciption file
 
 '''
 
-import time
+
 import numpy as N
 from analytics.gvgen import GvGen
 
@@ -112,16 +112,23 @@ def displayGraph(graph):
     """ 
     
     import networkx as nx
-    import pylab as P
+    import pylab as PL
     
+
     G = nx.DiGraph()
 
     #G.add_nodes_from(mcmcInference.GBN.values())
 
     for v in graph.values():
-        for p in v.parents:
-            G.add_edge(p.ID, v.ID)
-            #G.add_edge(p, v)
+        for ps in v.parents.values():
+            for p in ps.keys():
+                G.add_edge(p, v.ID)
+                
+    # for v in graph.values():
+    #     for p in v.parents:
+    #         print 'edge from %s -> %s'%(p.ID, v.ID)
+    #         G.add_edge(p.ID, v.ID)
+    #         #G.add_edge(p, v)
 
 
     #print G.nodes()
@@ -129,8 +136,11 @@ def displayGraph(graph):
     #print G.edges()
 
     #nx.draw(G,font_size=0)
+
+    PL.figure()
+
     nx.draw_spring(G,font_size=10)
-    P.show()
+    # PL.show()
 
 
 def plotAttrCPD(attr):

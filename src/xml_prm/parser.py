@@ -7,20 +7,23 @@ The :mod:`!xml_prm.parser` module contains the parsers that instatiate a :mod:`p
 
 """
 
-from prm.relationalschema import Entity,Relationship    
+from prm.relationalschema import Entity, Relationship, UncertainRelationship    
 from prm.attribute import * 
-from prm.dependency import Dependency
+from prm.dependency import Dependency, UncertainDependency
 from prm.localdistribution import * 
-from prm.prm import PRM
+from prm import prm
 
+
+import data.datainterface as DI
 from data.datainterface import datasetinterfaceFactory
-from data.datainterface import DataInterface,DataSetInterface
+from data.datainterface import DataSetInterface
 import data.aggregation
 
 
 
 import xml.parsers.expat 
 
+import logging
 
 import numpy
 
@@ -39,7 +42,7 @@ relsEl = 'Relationships'
 relEl = 'Relationship'
 relEl_name = 'name'
 relEl_foreign = 'foreign'
-relEl_uncertain = 'uncertain'
+relEl_k = 'k'
 relEl_type = 'type'
 relEl_description = 'description'
 attrEl = 'Attribute'
@@ -55,6 +58,7 @@ depEl_parent = 'parent'
 depEl_child = 'child'
 depEl_constraint = 'constraint'
 depEl_agg = 'aggregator'
+depEl_refun = 'refun'
 locDistsEl = 'LocalDistributions'
 locDistEl = 'LocalDistribution'
 locDistEl_attr = 'attribute'
@@ -127,7 +131,8 @@ class PRMparser:
         
         * `name` : The name has to correspond with the corresponding table name in the relational database
         * `foreign` : A list, separated by a coma, of the foreign keys of the relationship. The foreign attributes can be probabilistic, but usually the primary key of an entity serves as foreign key. The primary key of an entity can be defined as probilistic attribute, but this entails that the domain is all the entries in one database table. This doesn't scale well at all, but sometimes this can be desired behavior. In case the foreign key is not probabilistic and thus most likely a primary key, the special keyword `pk` can be used to refer to a primary key of an entity. The `pk` keyword defaults to `entityname_id` as the name of the primary key. Thus if there is a table `Professor`, `Professor.pk' would refer `Professor.professor_id`.
-        * `type` :  A relationship can be of type `1:n`,`n:1` or `m:n`. This is only used in the context of reference uncertainty.
+        * `type` :  This is only used in the context of reference uncertainty. A relationship can be of type `k:n`,`n:k`. 
+        * `k` : A fixed parameter indicating an uncertain relationship (i.e. reference uncertainty) of type `n:k`.
     
     **Attribute**
         
@@ -155,6 +160,7 @@ class PRMparser:
         * `child` : Child attribute, referenced by its full name. e.g. `Student.success`
         * `constraint` : Optional. A coma separated list of constraints that can be applied to the data interface. Most commonly used are normal slotchains, e.g. "Professor.pk=Advisor.professor_id,Advisor.student_id=Student.pk". If no constraint is given, ProbReM will apply a depth-first-search to find a slot chain from child to parent using :meth:`.computeSlotChain`
         * `aggregator` : If the constraint on the dependency leads to one child attribute object having multiple parent attribute objects, the values of the parent attribute objects have to be aggregated as the CPD for the child allows only one value for that parent. The module :mod:`.aggregation` implements different such methods, e.g. `AVG`, `MAX`, `MIN`, `MODE`
+        * `refun` : Indicator if the dependency has an uncertain relationship in the slotchain ('1','True' or 'T')
     
     **LocalDistribution**
         See :class:`LocalDistributionParser`
@@ -207,20 +213,36 @@ class PRMparser:
         if name==entiEl:
             self.currentER = Entity(attrs[entiEl_name])
             self.entities[attrs[entiEl_name]] = self.currentER 
+        
         ''' Create Relationship class '''
         if name==relEl:
             # see comment in end_element handler for a relationship.
             self.foreign = attrs[relEl_foreign]
 
-            uncertain = False
-            if relEl_uncertain in attrs: 
-                un = attrs[relEl_uncertain]
-                if un=="1" or un=="T" or un=="True":
-                    uncertain = True
-            
-            
-            self.currentER = Relationship( name = attrs[relEl_name], type = attrs[relEl_type],uncertain=uncertain )
+            # Reference Uncertainty introduces uncertain relationships
+            if relEl_type in attrs: 
+
+                nTok = None
+                reltype = attrs[relEl_type]
+                if reltype == 'n:k':
+                    nTok = True
+                elif reltype == 'k:n':
+                    nTok = False
+                else:
+                    raise Exception('Relationship type (`k:n` or `n:k`)')
+
+                # k in `n:k`                
+                k = 1
+                if relEl_k in attrs:
+                    k = attrs[relEl_k]
+
+
+                self.currentER = UncertainRelationship(name = attrs[relEl_name], nTok = nTok, k = k )
+            else:                            
+                self.currentER = Relationship( name = attrs[relEl_name] )
+
             self.relationships[attrs[relEl_name]] = self.currentER 
+        
         ''' Create Attribute class '''
         if name==attrEl: 
             name = attrs[attrEl_name]
@@ -242,13 +264,12 @@ class PRMparser:
                 pk = attrs[attrEl_pk]
                 if pk=="1" or pk=="T" or pk=="True":
                     self.currentER.pk.append(attribute)      
-                    #print "setting pk for entity %s"%(self.currentER.name)
+                    
             
         ''' Create a dependency class '''
         if name==depEl:
             #parent must either be an entity or relationship attribute
-            #
-            #try:
+            
             name = attrs[depEl_name]
             parent = self.attributes[attrs[depEl_parent]]
             child = self.attributes[attrs[depEl_child]]
@@ -258,27 +279,66 @@ class PRMparser:
             constraint = None
             if depEl_constraint in attrs:
                 constraint=attrs[depEl_constraint]
+
+            refun = False
+            if depEl_refun in attrs:
+                refunS = attrs[depEl_refun]
+                if refunS=="1" or refunS=="T" or refunS=="True":
+                    refun = True
                 
-            #In all other cases we use the name as key for the dictionary, for the dependencies we use the child attribute 
-            self.dependencies[name] = Dependency(name=name, parent=parent, child=child, constraint=constraint,aggregator=aggr)
             
-            #except:
-            #    raise Exception('Dependency %s is not properly defined'%(attrs[depEl_name]))
-            
-            #we compute the slotchain associated with this dependency in case no constraint has been defined. Otherwise we extract the slotchain from the constraint
-            if constraint is None:
-                self.dependencies[name].computeSlotChain()
+                  
+            if refun:
+                self.dependencies[name] = UncertainDependency(name=name, parent=parent, child=child, constraint=constraint,aggregator=aggr,attributes=self.attributes)
+
+                # The slotchain has been defined, we can now determine wheter there is reference uncertainty in
+                # that dependency. If the dependency starts or ends with an uncertain relationship it is not 
+                # reference uncertainty             
+
+                # Find what direction the slotchain points
+                childFirst = False
+                if self.dependencies[name].child.erClass == self.dependencies[name].slotchain[0]:
+                    childFirst = True
+
+                
+                
+                # logging.debug(self.dependencies[name].slotchain)
+
+
+                
+                for er in self.dependencies[name].slotchain[1:-1]:
+                    if er.isUncertainRelationship():                
+                        # extracting uncertain relationship
+                        self.dependencies[name].uncertainRelationship = er
+
+                # determining the direction of the uncertain relationship                        
+                if self.dependencies[name].uncertainRelationship.nTok:
+                    self.dependencies[name].nAttribute = self.dependencies[name].child
+                    self.dependencies[name].kAttribute = self.dependencies[name].parent
+                    self.dependencies[name].nIsParent = False
+
+                else: # = k:n
+                    self.dependencies[name].nAttribute = self.dependencies[name].parent
+                    self.dependencies[name].kAttribute = self.dependencies[name].child
+                    self.dependencies[name].nIsParent = True
+
+                        
+
             else:
-                # since the constraint is a string, the methods needs access to all attributes
-                self.dependencies[name].configureConstraint(self.attributes)
+                self.dependencies[name] = Dependency(name=name, parent=parent, child=child, constraint=constraint,aggregator=aggr, attributes=self.attributes)
+                                    
+            
+
             #we add information about the dependencies to the child/parent attributes            
             child.dependenciesChild.append(self.dependencies[name])            
-            parent.dependenciesParent.append(self.dependencies[name])                    
+            parent.dependenciesParent.append(self.dependencies[name])          
+                      
             #we update the attribute.parents list of all of the child attribute for the given dependency
             child.parents.append(parent)
+
+
         
-        ''' Loading the local distributions where they are available '''
-        
+        ''' Loading the local distributions where they are available '''        
         if name==locDistEl:
             attribute = self.attributes[attrs[locDistEl_attr]]
             distFile = attrs[locDistEl_file]
@@ -304,9 +364,9 @@ class PRMparser:
             key has been overwritten (for example to make a probabilistic id attribute). The attribute
             is overwritten by specifying an attribute with  pk='1' in the the xml representation.   
             '''
-            #print 'Parsing entity %s'%(self.currentER.name )
+            
             if self.currentER.pk == []:
-                #print 'adding pk to entity %s'%(self.currentER.name)
+                
                 attr_name = self.currentER.name.lower()+'_id'
                 attribute = attributeFactory( name=attr_name, er=self.currentER , type='NotProbabilistic', attrDef=None)
                 self.attributes_temp[attribute.fullname] = attribute
@@ -378,19 +438,44 @@ class PRMparser:
                 #adding relationship reference to the dict of the connected entities
                 entI.relationships[self.currentER.name] = self.currentER
             
-            #list of the names of the foreing keys of the relationship
+            #list of the names of the foreign keys of the relationship
             self.currentER.pk_string = ['%s'%(pk_i.fullname) for pk_i in self.currentER.pk]
             #list of entities associated with the current relationship    
             self.currentER.entities = self.currentER.foreign.keys()
             
             # Reference Uncertainty
-            if self.currentER.uncertain:
-                print "UPDATE DOCUMENTATION"
+            if self.currentER.isUncertainRelationship():
+                logging.debug("TODO: UPDATE DOCUMENTATION FOR REFERENCE UNCERTAINTY")
                 # Creating the exist attribute for the uncertain relationship
                 ex = ExistAttribute(name='exist',er=self.currentER)
                 # Adding ex to dict of attributes
                 self.attributes[ex.fullname] = ex                
                 self.attributes_temp[ex.fullname] = ex
+                self.currentER.existAttribute = ex
+
+                # self.foreign is the list of foreign attributes has 2 entries in this case,
+                # if the relationship is of type `n:k`, the first one refers to the 
+                # n attribute, the second to the k attribute
+
+                foreignEntities = [None, None]
+                for i,rpk in enumerate(self.foreign):
+                    # rpk = [ pk_name , alias_name ]
+                    fk = rpk[0]                    
+                    # (entity,attribute) , e.g. User.item_id or User.pk
+                    (ent,a) = fk.split('.')
+                    entI = self.entities[ent]
+                                                                                     
+                    foreignEntities[i] = entI
+
+
+                if self.currentER.nTok:
+                    self.currentER.nEnitity = foreignEntities[0]
+                    self.currentER.kEnitity = foreignEntities[1]
+                else: # = k:n
+                    self.currentER.nEnitity = foreignEntities[1]
+                    self.currentER.kEnitity = foreignEntities[0]        
+                        
+                    
                 
             
                                                     
@@ -417,23 +502,29 @@ class PRMparser:
         ''' Parse given PRM specification '''
         prmParser.ParseFile(open(xmlfile)) 
         
-        
-        ''' print for debugging 
-        print "Attributes"     
-        for att in self.attributes.values():
-            print att.name, [p.name for p in att.parents]
-        '''          
-        
+                
         ''' We display a list of attributes that have no CPD after parsin. These distributions will have to be learned from data'''
         noCPD = [attr.fullname for attr in self.attributes.values() if attr.CPD is None and attr.probabilistic]
         if noCPD != []:            
-            print 'Local Distribution(s) missing for:'," ".join(noCPD)
+            logging.info('Local Distribution(s) missing for:'," ".join(noCPD))
         
             
         ''' Finally we instantiate the Probabilistic Relational Model and return it '''
-        prm = PRM(self.prmName, self.entities, self.relationships, self.attributes, self.dependencies,self.di) 
+        prm.name = self.prmName
+        prm.entities = self.entities
+
+        prm.relationships = self.relationships
+
+        prm.attributes = self.attributes
+
+        prm.dependencies = self.dependencies
+
+        prm.datainterface = self.di
+
+        prm.topoSortAttributes = topologicalSort([a for a in self.attributes.values() if a.probabilistic])
         
-        return prm
+                
+        
     
 
 
@@ -476,7 +567,7 @@ class LocalDistributionParser:
         ''' Create CPD for '''
         #raise exception if the name of attribute specified in the file doesn't match the one passed by the parser
         if self.attribute.fullname != self.attrs[locDistEl_attr]:
-            raise Exception("Local Distribution attribute names don't match: %s!=%s"%(self.attribute.name,self.attrs[locDistEl_attr]))                      
+            raise Exception("Local Distribution attribute names don't match: %s!=%s"%(self.attribute.name,self.attrs[locDistEl_attr]))
         
         
     def tabCPD(self):
@@ -497,21 +588,18 @@ class LocalDistributionParser:
         
         '''
         cpdM = numpy.load(cpdfile)    
-        
-        #print cpdM
-        #print self.attribute.CPD.cpdMatrix  
-        #print cpdM.shape, self.attribute.CPD.cpdMatrix.shape
+                
         
         if cpdM.shape == self.attribute.CPD.cpdMatrix.shape:                   
             self.attribute.CPD.cpdMatrix = cpdM
         else:
-            print "WARNING: Matrix dimensions of loaded CPD  %s don't match (%s vs %s)"%(cpdfile,cpdM.shape,self.attribute.CPD.cpdMatrix.shape)
+            logging.debug("WARNING: Matrix dimensions of loaded CPD  %s don't match (%s vs %s)"%(cpdfile,cpdM.shape,self.attribute.CPD.cpdMatrix.shape))
             raise Exception("Matrix dimensions of loaded CPD  %s don't match"%cpdfile)
         
         #calculating the cumulative distribution
         self.attribute.CPD.computeCumulativeDist()
         self.attribute.CPD.computeLogDists()
-        #print self.attribute.CPD.cpdLogMatrix
+        
              
         
         
@@ -524,7 +612,7 @@ class LocalDistributionParser:
     
     def parseLocalDistribution(self,attr,distFile):
         
-        #print "parsing dist for %s from file %s"%(attr.name,distFile)
+        
         self.attribute = attr
         
         # we create a new expat parser for every file that we handle because ParseFile(f) can't be called more than once apparently
@@ -536,7 +624,7 @@ class LocalDistributionParser:
         try:
             localDistParser.ParseFile(open(distFile)) 
         except:            
-            print 'ERROR: Local distribution %s could not be loaded.'%distFile
+            logging.debug('ERROR: Local distribution %s could not be loaded.'%distFile)
             #raise Exception('ERROR: Local distribution %s could not be loaded.'%distFile)
         
 class DataInterfaceParser: 
@@ -623,8 +711,13 @@ class DataInterfaceParser:
         self.DSI.append(dsi)
             
     def createDI(self):
-        '''All information about the datasets has been collected and stored in self.DSI (datasetinterface)'''
-        self.diI = DataInterface(self.name,self.ditype,self.DSI)    
+        '''All information about the datasets has been collected and stored in self.DSI (datasetinterface), 
+        the module :mod:`.datainterface` can now be initializded'''
+        
+        DI.name = self.name
+        DI.ditype = self.ditype
+        DI.DSI = self.DSI
+        DI.computeTrainingSets()
         
     
     def end_element(self,name):
@@ -635,23 +728,13 @@ class DataInterfaceParser:
     
     def parseDataInterface(self,diFile):
         
-        
-        
-        
         # we create a new expat parser for every file that we handle because ParseFile(f) can't be called more than once apparently
         diParser = xml.parsers.expat.ParserCreate()
         diParser.StartElementHandler = self.start_element
         diParser.EndElementHandler = self.end_element
         
         diParser.ParseFile(open(diFile)) 
-        '''
-        try:
-            diParser.ParseFile(open(diFile)) 
-        except Exception,e:
-            print 'WARNING: Data Interface %s could not be loaded'%diFile
-            print "An error occurred:", e
-            raise e
-        '''
+        
         return self.diI
         
        

@@ -166,7 +166,7 @@ class BinaryAttribute(Attribute):
         '''
         Constructs an BinaryVariable class that can take the value True or False
         '''        
-        Attribute.__init__(self, name, er)     
+        Attribute.__init__(self, name, er)
         
         # set domain and cardinality
         self.domain = (0,1)
@@ -347,7 +347,7 @@ class ForeignAttribute(Attribute):
         return '%s.%s'%(self.erClass.name,self.name)     
         
 
-class ExistAttribute(BinaryAttribute):
+class ExistAttribute(Attribute):
     """
     An Exist Attribute is a binary variable used when making inference in uncertain 
     relationships. Reference Uncertainty implies that we don't know which objects 
