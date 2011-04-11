@@ -6,28 +6,29 @@ Config Module :mod:`ui.config`
 
     from ui import config
     import probrem
+    config.loadPRM(prmSpec)
 
-Then one can for example create a :class:`~!prm.prm.PRM` instance::
+Then code above for example would initialize the PRM module :mod:`~!prm.prm`::
 
-    probrem.prmI = config.loadPRM(prmSpec)
+    print probrem.PRM
+    <module 'prm.prm' from './../../src/prm/prm.pyc'> 
 
 The config module can't be executed directly.
 """
-
+    
 import sys
 
-if __name__ == '__main__' :
-    ''' 
-    Not allowed to execute :mod:`ui.config` directly.
-    '''         
-    raise Exception("You are running stand alone Probrem instance. You shouldn't be doing that. See README in root folder")
-    
+from ui import log
+import logging
+
 
 from xml_prm.parser import DataInterfaceParser
 from xml_prm.parser import PRMparser
 
-from learners.learnerfactory import learnerFactory
-from inference.engine import Engine
+import learners  
+
+from inference import engine
+
 
 
 def fromFile(probremI, config):
@@ -46,8 +47,8 @@ def loadPRM(prmSpec):
 	:returns: :class:`prm.prm.PRM` instance
     
 	"""
-	
-	print "PRM Factory: create PRM from %s"%(prmSpec.split('/')[-1])	
+		
+	logging.info("PRM Factory: create PRM from %s"%(prmSpec.split('/')[-1]))
 	return PRMparser().parsePRM(prmSpec)
 
 def loadDI(diSpec):
@@ -58,27 +59,45 @@ def loadDI(diSpec):
 	:returns: :class:`data.datainterface.DataInterface` instance, e.g. :class:`~data.sqliteinterface.SQLiteDI`
     
 	"""
-	print "DataInterface Factory: create DataInterface from %s"%(diSpec.split('/')[-1])
+	logging.info("DataInterface Factory: create DataInterface from %s"%(diSpec.split('/')[-1]))
 	return DataInterfaceParser().parseDataInterface(diSpec)		
-	#return datainterfaceFactory(diSpec)
 
 def loadLearner(learnerType):
     """
-	Loads a :class:`~!learners.cpdlearners.CPDLearner` instance using :meth:`learners.learnerfactory`
+	Loads a learner instance, e.g. a :class:`~!learners.cpdlearners.CPDLearner` instance for learning 
+	the conditional probability distributions (CPDs). 
 	
-	:arg diSpec: File name of Data Interface XML specification
-	:returns: :class:`learners.cpdlearners.CPDLearner` instance, e.g. :class:`~learners.cpdlearners.CPDTabularLearner`
+	:arg learnerType: Name of a learner class (e.g. `CPDTabularLearner`)
+	:returns: A learner instance, e.g. :class:`~learners.cpdlearners.CPDTabularLearner`
     
 	"""
-    return learnerFactory(learnerType)
+    
+    logging.info('Learner Factory: create %s'%(learnerType))
+    return getattr(learners,learnerType )()
 
-def loadInference(inferenceType):
+
+def loadInferenceAlgorithm(inferenceType):
 	"""
-	Loads the specified inference engine :class:`~!.Engine` and configures it to use inferenceType (e.g. MCMC,LW)  
+	Loads the specified inference algorithm for the engine :mod:`~!.engine` and configures it to use `inferenceType` (e.g. MCMC,LW).
 	
-	:arg inferenceType: The name of the inference method class (MCMC,LW)
-	:returns: :class:`.Engine` instance
+	Usually an inference algorithm implements a `configure()` method that can be used to 
+	precompute data structures needed for inference.
+    In the case of the Gibbs sampler, :mod:`.gibbs.configure` will precompute all the conditional likelihood
+    functions of the attributes with parents. Note that at the time a inference method is configured,
+    the PRM should be initialized with proper local distributions (either learned or loaded).
+	
+	:arg inferenceType: The name of the inference method class (e.g. `GIBBS`)	
     
 	"""
-	return Engine(inferenceType)
+	if inferenceType == 'GIBBS':
+	    from inference.mcmc import gibbs 
+	    engine.inferenceAlgo = gibbs
+	    gibbs.configure()
+	
+	elif inferenceType == 'MH':
+	    from inference.mcmc import mh 
+	    engine.inferenceAlgo = mh
+	    mh.configure()
+	
+
 

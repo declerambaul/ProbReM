@@ -1,0 +1,41 @@
+<?xml version="1.0" standalone="no" ?>
+<!-- 
+
+A PRM specification for an artificial dataset dataset.
+
+See README for more information
+
+-->
+<PRM name="StudentProfPRM" >
+	<RelationalSchema>
+		<Entities>
+			<Entity name="Student">
+				<Attribute name="success" type="Binary"/>
+			</Entity>	
+			<Entity name="Professor">
+				<Attribute name="fame" type="Binary"/>
+				<Attribute name="funding" type="Binary"/>
+			</Entity>
+		</Entities>
+		<Relationships>
+			<Relationship name="advisor" foreign="Student.pk,Professor.pk" type="n:k" k="1">	
+			</Relationship>				
+		</Relationships>
+	</RelationalSchema>	
+	<DependencyStructure>
+	    
+		<Dependency name="advisor_funding" parent="Professor.funding" child="advisor.exist" constraint="Professor.professor_id=advisor.professor_id"/>
+		<!--   
+		-->
+
+		<Dependency name="funding_fame" parent="Professor.fame" child="Professor.funding"/>		
+		<Dependency name="success_fame" parent="Professor.fame" child="Student.success" constraint="Professor.professor_id=advisor.professor_id,advisor.student_id=Student.student_id" refun="1"/>		
+
+	</DependencyStructure>	
+	<LocalDistributions> 
+	    <LocalDistribution attribute='advisor.exist' file='./localdistributions/exist_funding.xml'/>
+        <LocalDistribution attribute='Professor.funding' file='./localdistributions/funding_fame.xml'/>
+        <LocalDistribution attribute='Student.success' file='./localdistributions/success_fame.xml'/>
+        <LocalDistribution attribute='Professor.fame' file='./localdistributions/fame.xml'/>       
+	</LocalDistributions>	
+</PRM>

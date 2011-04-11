@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+	Reference Uncertainty
+
+	Data Interface Configuration
+	
+	Student / Professor relationship example from Pasula/Stuart paper
+	
+-->
+<DataInterface name="StudentProfDI">
+	<Crossvalidation folds='1'>		
+		<!--
+		<Dataset type='SQLite' path='data/sqlite/studentprof.sqlite'/>
+		<Dataset type='SQLite' path='data/sqlite/studentprof_refun.sqlite'/>
+		-->
+		<Dataset type='SQLite' path='data/sqlite/studentprof.10.sqlite'/>
+
+	</Crossvalidation>
+</DataInterface>
