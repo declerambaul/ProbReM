@@ -69,14 +69,11 @@ from prm.localdistribution import CPDTabular
 import numpy as N
 
 
-''' SQLite connection '''
-database = 'studentprof.10.sqlite'
-con = sqlite3.connect('./sqlite/'+database)
-con.isolation_level = "DEFERRED"
-cur = con.cursor()
 
 # generate a skeleton (if there are already entires in the tables they can be reused)
-import createSkeleton
+import skeleton 
+
+
 
 # Loading the PRM in order to define the model parameter. The local distributions are also 
 # be used to generate the data
@@ -84,13 +81,29 @@ prmSpec = "../model/studentprofPRM.xml"
 config.loadPRM(prmSpec)
 
 
-
 # if we have already generated CPDs for the given dependency structure, we can also use those instead of generating new ones
 GENERATES_CPDs = False
 
-if GENERATES_CPDs:
-    
+
+
+def sqlConnection(database_fn=None):
+    """ SQLite connection """
+
+    if database_fn is None:
+        database_fn = 'studentprof.sqlite'
+
+    con = sqlite3.connect('./sqlite/'+database_fn)
+    con.isolation_level = "DEFERRED"
+    cur = con.cursor()
+
+    return con
+
+
+def generateCPDs():    
     print 'GENERATE CPDs'
+
+    
+
     def createCPD(attr,cpd):
         
         
@@ -117,122 +130,132 @@ if GENERATES_CPDs:
     a = probrem.PRM.attributes['Student.success']
     createCPD(a,success_fame)
     
-    fame = N.array( [ [0.2, 0.8] ] )
+    fame = N.array( [ [0.4, 0.6] ] )
     #numpy.atleast_2d
     a = probrem.PRM.attributes['Professor.fame']
     createCPD(a,fame)
     
 
 
+def generate_data(con):
+    print 'GENERATE ATTRIBUTE DATA'
 
-print 'GENERATE ATTRIBUTE DATA'
-for attr in probrem.PRM.topoSortAttributes:
+    cur = con.cursor()
 
-    print attr.name
-    
-    # all attr objects that we want to generate data for
-    if len(attr.parents) == 0:
-        attr_pks = ','.join(attr.erClass.pk_string)
-        sqlAttr = 'SELECT %s FROM %s GROUP BY %s;'%(attr_pks,attr.erClass.name,attr_pks)
-    else:
-        
-        attr_pks = ','.join(attr.erClass.pk_string)
+    for attr in probrem.PRM.topoSortAttributes:
 
-        #Using the slotchain(s) for the dependency(ies) of the given the given attribute we can construct the string list of tables        
-        query_parents = []
-        query_tables = [attr.erClass]
-        scWhere = []
-        for dep in attr.dependenciesChild:
-            #SELECT clause
-            
-            if dep.aggregator is None:
-                query_parents.append(dep.parent.fullname)
-            else: 
-                query_parents.append('ROUND(%s( %s))'%(dep.aggregator('SQLite'),dep.parent.fullname))
-                            
-            '''
-            if dep.aggregator is None:
-                #no Aggregation, use parent value directly
-                query_parents.append(dep.parent.fullname)
-            else:                
-                aggr_string = dep.aggregator('SQLite')
-                aggr_attr_name = '%s(%s)'%(aggr_string,dep.parent.fullname)
-                query_parents.append(aggr_attr_name)
-            '''    
-            #FROM clause
-            for er in dep.slotchain:
-                if er not in query_tables:
-                    query_tables.append(er)
+        print attr.name
         
-        
-            #WHERE clause
-            scWhere.extend(dep.slotchain_attr_string)  
-            
-        sqlParents = ','.join(query_parents)
-        
-        sqlTables = ",".join([er.name for er in query_tables])    
-        sqlWhere = " AND ".join(scWhere)
-        
-        if len(sqlWhere)!=0:
-            sqlWhere = " AND ".join(scWhere)
-            sqlAttr = 'SELECT %s,%s FROM %s WHERE %s GROUP BY %s;'%(attr_pks,sqlParents,sqlTables ,sqlWhere,attr_pks)
-        else:
-            sqlAttr = 'SELECT %s,%s FROM %s GROUP BY %s;'%(attr_pks,sqlParents,sqlTables ,attr_pks)
-
-    
-    
-    print sqlAttr
-        
-    cur.execute(sqlAttr)
-    sqlUpdates = []
-    
-    for row in cur:
-        #sampling an value for the attribute
-        print 'row',row
-        attr_pk = None
+        # all attr objects that we want to generate data for
         if len(attr.parents) == 0:
-            attr_pk = row
-            attrVal = attr.CPD.sample([])
+            attr_pks = ','.join(attr.erClass.pk_string)
+            sqlAttr = 'SELECT %s FROM %s GROUP BY %s;'%(attr_pks,attr.erClass.name,attr_pks)
         else:
-            ident = len(attr.erClass.pk) #+len(attr.parents)
-            attr_pk = row[0:ident]
-            parents_val = row[ident:]
-            print 'attr_pk',attr_pk
-            print 'parents_val',parents_val
-            #try:
-            attrVal = attr.CPD.sample(parents_val)
-            #except:
-            #print 'attr_pk: ',attr_pk
-            #print 'parents_val: ',parents_val
+            
+            attr_pks = ','.join(attr.erClass.pk_string)
+
+            #Using the slotchain(s) for the dependency(ies) of the given the given attribute we can construct the string list of tables        
+            query_parents = []
+            query_tables = [attr.erClass]
+            scWhere = []
+            for dep in attr.dependenciesChild:
+                #SELECT clause
                 
+                if dep.aggregator is None:
+                    query_parents.append(dep.parent.fullname)
+                else: 
+                    query_parents.append('ROUND(%s( %s))'%(dep.aggregator('SQLite'),dep.parent.fullname))
+                                
+                '''
+                if dep.aggregator is None:
+                    #no Aggregation, use parent value directly
+                    query_parents.append(dep.parent.fullname)
+                else:                
+                    aggr_string = dep.aggregator('SQLite')
+                    aggr_attr_name = '%s(%s)'%(aggr_string,dep.parent.fullname)
+                    query_parents.append(aggr_attr_name)
+                '''    
+                #FROM clause
+                for er in dep.slotchain:
+                    if er not in query_tables:
+                        query_tables.append(er)
+            
+            
+                #WHERE clause
+                scWhere.extend(dep.slotchain_attr_string)  
                 
-        '''
-        sql statement to update val
+            sqlParents = ','.join(query_parents)
+            
+            sqlTables = ",".join([er.name for er in query_tables])    
+            sqlWhere = " AND ".join(scWhere)
+            
+            if len(sqlWhere)!=0:
+                sqlWhere = " AND ".join(scWhere)
+                sqlAttr = 'SELECT %s,%s FROM %s WHERE %s GROUP BY %s;'%(attr_pks,sqlParents,sqlTables ,sqlWhere,attr_pks)
+            else:
+                sqlAttr = 'SELECT %s,%s FROM %s GROUP BY %s;'%(attr_pks,sqlParents,sqlTables ,attr_pks)
 
-        UPDATE "table_name"
-        SET column_1 = [value1], column_2 = [value2]
-        WHERE {condition}
-        '''
         
-        #update query
-        sqlWhere = ' AND '.join(['%s=%s'%(pk_i,obj_i) for (pk_i,obj_i) in zip(attr.erClass.pk_string,attr_pk)])
         
+        print sqlAttr
+            
+        cur.execute(sqlAttr)
+        sqlUpdates = []
         
-        sqlUpdate = 'UPDATE %s SET %s=%s WHERE %s;'%(attr.erClass.name,attr.name,attrVal,sqlWhere)
-        sqlUpdates.append(sqlUpdate)
-     
-    for sqlUpdate in sqlUpdates:
-        cur.execute(sqlUpdate) 
+        for row in cur:
+            #sampling an value for the attribute
+            print 'row',row
+            attr_pk = None
+            if len(attr.parents) == 0:
+                attr_pk = row
+                attrVal = attr.CPD.sample([])
+            else:
+                ident = len(attr.erClass.pk) #+len(attr.parents)
+                attr_pk = row[0:ident]
+                parents_val = row[ident:]
+                print 'attr_pk',attr_pk
+                print 'parents_val',parents_val
+                #try:
+                attrVal = attr.CPD.sample(parents_val)
+                #except:
+                #print 'attr_pk: ',attr_pk
+                #print 'parents_val: ',parents_val
+                    
+                    
+            '''
+            sql statement to update val
 
-    con.commit()        
+            UPDATE "table_name"
+            SET column_1 = [value1], column_2 = [value2]
+            WHERE {condition}
+            '''
+            
+            #update query
+            sqlWhere = ' AND '.join(['%s=%s'%(pk_i,obj_i) for (pk_i,obj_i) in zip(attr.erClass.pk_string,attr_pk)])
+            
+            
+            sqlUpdate = 'UPDATE %s SET %s=%s WHERE %s;'%(attr.erClass.name,attr.name,attrVal,sqlWhere)
+            sqlUpdates.append(sqlUpdate)
+         
+        for sqlUpdate in sqlUpdates:
+            cur.execute(sqlUpdate) 
+
+        con.commit()        
 
 
 
+if GENERATES_CPDs:
+    generateCPDs()
+
+nprofarray = range(20,200,20)
+for nprofs in nprofarray:
+    skeleton.nprofs = nprofs
 
 
+    con = skeleton.createSkeleton('studentprof.%s.sqlite'%nprofs)
 
 
-
+    generate_data(con)
 
 
 

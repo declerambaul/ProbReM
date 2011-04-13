@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.DEBUG,
                     format='\t<%(levelname)-6s - %(module)s.%(funcName)s():%(lineno)d>\n%(message)s',
                     # format='%(name)-12s %(levelname)-8s - %(funcName)s %(lineno)d : %(message)s',
                     datefmt='%m-%d %H:%M',
-                    filename='probem.log',
+                    filename='probrem.log',
                     filemode='w')
 
 

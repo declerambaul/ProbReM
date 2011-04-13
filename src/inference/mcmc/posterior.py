@@ -200,7 +200,7 @@ def mean(chainID=None, gbnV=None, sVarInd=None, combined=False):
 def histogramm(**kwargs):
     '''
     Convergence diagnostics that plots the posterior density function (using the matplotlib histogram) mean of all the sampling variables in the currentChain. 
-    If a `chainID` is provided the histogram of the associated chain is plotted instead. If `sVarInd` or `gbnV` is provided, only the histogram of this variable is plotted.
+    If a `chainID` is provided the histogram of the associated chain is plotted instead. If `varIndex` or `gbnV` is provided, only the histogram of this variable is plotted.
     
     :arg chainID: Optional identification of chain to be analyzed
     :arg varIndex: Optional index of event variable to be analyzed
@@ -285,15 +285,16 @@ def gelman_rubin():
     
     # Measure of disagreement between the chains
     # R_hat is koller book
+
     R_hat = N.sqrt(V/W)
 
     # print 'samples',samples.values()
-    print 'f_bar_K',f_bar_K
-    print 'f_bar',f_bar
-    print 'B',B
-    print 'W',W 
-    print 'V',V 
-    print 'R_hat',R_hat
+    # print 'f_bar_K',f_bar_K
+    # print 'f_bar',f_bar
+    # print 'B',B
+    # print 'W',W 
+    # print 'V',V 
+    # print 'R_hat',R_hat
 
     PL.figure()
 
@@ -304,6 +305,7 @@ def gelman_rubin():
         PL.xlabel(pID)
         PL.ylabel('Gelman-Rubin')
     
+    return R_hat
     
 def autocorrelation(max_l = 50, **kwargs):
     '''
@@ -342,7 +344,7 @@ def autocorrelation(max_l = 50, **kwargs):
         C[l,:] = 1./(M-l) * ((chain[0:(M-l),:]-E_bar[-1])*(chain[l:,:]-E_bar[-1])).sum(axis=0)
 
 
-    # print C
+    
 
     # autocorrelation   
     A = C / V[-1,:]

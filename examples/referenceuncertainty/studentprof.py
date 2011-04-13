@@ -61,10 +61,15 @@ logging.info('==================================================================
 from inference.query import *
 
 event = [createQvar(attrName='Student.success', objsConstraint='incl', objsPkValues=[(1,)])]
-evidence = [createQvar(attrName='Professor.funding', objsConstraint='incl', objsPkValues=[(1,),(2,),(3,),(4,),(5,),(6,),(7,),(8,),(9,),(10,)]), # ,(3,)
-            createQvar(attrName='Professor.fame', objsConstraint='incl', objsPkValues=[(1,),(2,),(3,),(4,),(5,),(6,),(7,),(8,),(9,),(10,)]),
+evidence = [createQvar(attrName='Professor.funding', objsConstraint='excl', objsPkValues=[]),
+            createQvar(attrName='Professor.fame', objsConstraint='excl', objsPkValues=[]),
             #createQvar(attrName='advisor.exist', objsConstraint='incl', objsPkValues=[(2,1),(1,2),(3,3)])
             ]
+
+# evidence = [createQvar(attrName='Professor.funding', objsConstraint='incl', objsPkValues=[(1,),(2,),(3,),(4,),(5,),(6,),(7,),(8,),(9,),(10,)]), # ,(3,)
+#             createQvar(attrName='Professor.fame', objsConstraint='incl', objsPkValues=[(1,),(2,),(3,),(4,),(5,),(6,),(7,),(8,),(9,),(10,)]),
+#             #createQvar(attrName='advisor.exist', objsConstraint='incl', objsPkValues=[(2,1),(1,2),(3,3)])
+#             ]
 
 # event = [   createQvar(attrName='Professor.funding', objsConstraint='incl', objsPkValues=[(1,),(3,),(2,)]),
 #             createQvar(attrName='Professor.fame', objsConstraint='incl', objsPkValues=[(1,),(3,),(2,)]),
@@ -85,16 +90,19 @@ query = Query(event,evidence)
 
 #  setting inference parameters
 mcmcInference.ITER = 1000
-mcmcInference.BURNIN = 500
-mcmcInference.CHAINS = 10
+mcmcInference.BURNIN = 200
+mcmcInference.CHAINS = 3
 
 
-probrem.engine.infer(query)
+# probrem.engine.infer(query)
 
 
 # convenience
 GBN = probrem.engine.GBN
 
+
+def infer():
+	probrem.engine.infer(query)
 
 
 def showCumMean():
