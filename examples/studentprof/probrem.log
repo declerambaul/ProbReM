@@ -1,0 +1,34 @@
+	<INFO   - config.loadPRM():51>
+PRM Factory: create PRM from studentprofPRM.xml
+	<DEBUG  - parser.end_element():448>
+TODO: UPDATE DOCUMENTATION FOR REFERENCE UNCERTAINTY
+	<INFO   - config.loadDI():62>
+DataInterface Factory: create DataInterface from studentprofDI.xml
+	<INFO   - datainterface.datasetinterfaceFactory():95>
+	DataSet: studentprof_refun.sqlite (SQLite)
+	<INFO   - config.loadLearner():75>
+Learner Factory: create CPDTabularLearner
+	<INFO   - studentprof.<module>():58>
+====================================================================================
+	<INFO   - engine.infer():92>
+Inference for: P(Student.success | Professor.funding,Professor.fame)
+	<DEBUG  - engine.addParents():241>
+Adding Reference vertex for Student.success.1
+	<DEBUG  - sqliteinterface.loadExistParents():623>
+SELECT Professor.professor_id,Professor.professor_id,Professor.funding FROM Professor;
+	<INFO   - engine.infer():98>
+-- Ground Bayesian Network --
+All      : 8 vertices
+	Professor.fame (3)
+	Student.success (1)
+	advisor.exist (1)
+	Professor.funding (3)
+Sampling : 2 vertices
+	Student.success (1)
+	advisor.exist (1)
+	<INFO   - mh.run():65>
+Chain 1, Running Metropolis Hastings sampler (500 iterations)
+	<INFO   - mh.run():65>
+Chain 2, Running Metropolis Hastings sampler (500 iterations)
+	<INFO   - mh.run():65>
+Chain 3, Running Metropolis Hastings sampler (500 iterations)

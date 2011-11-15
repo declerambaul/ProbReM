@@ -9,14 +9,16 @@
 Welcome to ProbReM!
 ===================================
 
-.. WARNING::
 
-    This is a very new framework which was released in December 2010. It is sure to contain bugs. Please `contact`_ us if you are interested in using/extending the existing framework.
+..
+    .. WARNING::
+
+        This is a very new framework which was released in December 2010. It is sure to contain bugs. Please `contact`_ us if you are interested in using/extending the existing framework.
 
 
 |probrem| is a framework for modelling relational data using Probabilistic Relational Models (\ **PRM**\ s). 
 
-Several :ref:`frameworks<relatedResearch>` have so far been proposed in Statistical Relational Learning, we hope to contribute to these efforts. |probrem| allows to model relational domains in the form of a directed graphical model which is specified in XML; the data lives in a relational database. With this first release, we aim to present an alternative with a focus on scalability and performance. 
+Several :ref:`frameworks<relatedResearch>` have so far been proposed in Statistical Relational Learning, we hope to contribute to these efforts. |probrem| allows to model relational domains in the form of a directed graphical model which is specified in XML; the data lives in a relational database. 
 
 * It is based on the Directed Acyclic Probabilistic Entity Relationship (DAPER) model
 * It supports discrete variables
@@ -37,9 +39,7 @@ The documentation is organized as follows:
 
 .. toctree::
     :maxdepth: 1
-    
-    installing.rst
-    
+        
     about.rst
     
     using.rst

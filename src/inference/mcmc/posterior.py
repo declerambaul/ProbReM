@@ -305,7 +305,7 @@ def gelman_rubin():
         PL.xlabel(pID)
         PL.ylabel('Gelman-Rubin')
     
-    return R_hat
+    return R_hat[1:,:]
     
 def autocorrelation(max_l = 50, **kwargs):
     '''

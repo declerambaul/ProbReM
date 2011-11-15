@@ -37,8 +37,7 @@ GBNS = {}
 At this point, only one ground Bayesian network exists, :attr:`.GBN`. If posterior samples are collected from multiple chains,  e.g. in the case of MCMC inference, it would be ideal to run these chains in paralell. However this would require multiple instantiations of the ground Bayesian network. Not just the values of the vertices are required, since the network stucture changes with reference uncertainty, the whole network needs to be duplicated.
 
 We could envision a dict() of ground Bayesian networks. Note that copy.deepcopy() doesn't work as it would also copy all other istances, e.g. :class:`.Attribute` objects.
-
-Also, there would be problems with some datastructures that use an ID of a :class:`.GBNvertex` as a key. For example the :attr:`.ReferenceVertex.existParents` would break. 
+ 
 
 For now, changes are run sequentially and the convergence diagnostics are run on the collected samples of the :mod:`.posterior`.
 '''
@@ -97,11 +96,10 @@ def infer(queryI):
     unrollGBN()
     
     logging.info(GBN)
-    
+        
     inferenceAlgo.run()
     # logging.debug('inferenceAlgo.run() is commented')
     
-            
 
 # @time_analysis
 def unrollGBN():
@@ -123,7 +121,7 @@ def unrollGBN():
     # TODO : FIX THE CROSS VALIDATION. WE DON'T WANT TO QUERY K DIFFERENT FOLDS 
     # WHEN UNROLLING. JUST ONE, THE TRAINING SET FOLD
     dsi = DI.DSI[0]
-    #print DI.trainingSets[di.DSI[0]]
+    
     
     
     # add the inference (event) variables to the GBN 
@@ -221,7 +219,7 @@ def addParents(attr,gbnVertices):
     # TODO : FIX THE CROSS VALIDATION. WE DON'T WANT TO QUERY K DIFFERENT FOLDS 
     # WHEN UNROLLING. JUST ONE, THE TRAINING SET FOLD, AT THIS POINT WE ARE ONLY WORKING WITH ONE FOLD.
     dsi = DI.DSI[0]
-    #print DI.trainingSets[di.DSI[0]]
+    
     
     
     # parents for each dependency that the attribute is a child of
@@ -242,18 +240,35 @@ def addParents(attr,gbnVertices):
             
                 logging.debug('Adding Reference vertex for %s'%gbnV.ID)
                 
+                # add reference vertex 
                 refVID = GBN.addReferenceVertex(gbnV,dep)
 
+                # add parents of the exist variables associated with the vertex
+                addExistParents(GBN[refVID])
+                
+
+                # Note, the exist variables are sampling vertices (i.e. sparse representation in refGBNv.references)
+                # Thus these values are set during inference, e.g. see mh.initializeVertices()
+                
+
                 # Initialize the edges for all k connections
-                for i in range(GBN[refVID].k):
+                # k = 0
+                # while k < GBN[refVID].k:                
                     
+                #     # choose one k-entity object
+                #     # TODO sample it from proposal distribution.... 
+                #     # choose uniformly for now (i.e. = Pasula paper)
 
-                    # choose one k-entity object
-                    # TODO sample it from proposal distribution.... 
-                    # choose uniformly for now (i.e. = Pasula paper)
-                    kGBNv = random.choice(GBN.allByAttribute[dep.kAttribute])                    
+                #     kGBNv = random.choice(GBN.allByAttribute[dep.kAttribute])   
+                    
+                #     if kGBNv.erID not in GBN[refVID].references:            
+                #         GBN[refVID].addReference(kGBNv)
+                #         k+=1
 
-                    GBN[refVID].addReference(kGBNv)
+                # logging.debug('current references of %s'%GBN[refVID].ID)
+                # logging.debug(GBN[refVID].references)
+
+                
 
 
         else:
@@ -328,7 +343,7 @@ def addChildren(attr,gbnVertices):
     # TODO : FIX THE CROSS VALIDATION. WE DON'T WANT TO QUERY K DIFFERENT FOLDS 
     # WHEN UNROLLING. JUST ONE, THE TRAINING SET FOLD
     dsi = DI.DSI[0]
-    #print DI.trainingSets[di.DSI[0]]
+    
     
     
     # parents for each dependency that the attribute is a child of
@@ -338,6 +353,11 @@ def addChildren(attr,gbnVertices):
         if dep.uncertain:
             # Reference Uncertainty
 
+            '''
+            There is a k-side and s-side to the uncertain relationship (n:k). 
+
+            So far the vertex we are doing inference on is on the n-side and this is also the child side of the uncertain dependency
+            '''
             raise Exception('We are adding children of an uncertain depependcy. Not implemented yet.')
 
 
@@ -422,6 +442,7 @@ def initReferenceUncertainty(dep):
     
     # variables used to access the result sets redefined for code readability                    
     n_pk = len(dep.kAttribute.erClass.pk)
+
     
     
     # load all attribute obj
@@ -446,13 +467,27 @@ def initReferenceUncertainty(dep):
             elif attr_val is not None:   #attr obj is in evidence -> d-seperates -> not pushed onto queue 
 
                 GBN.addEvidenceVertex(attr_ID,dep.kAttribute,attr_obj,attr_val)  
-            
-    # Next, all the potential parents of the exist attributes need to be added to `dep.uncertainRelationship.existParents'        
+                        
     
+
+def addExistParents(refGbnV):
+    '''
+    An uncertain relationship of type `n:k` has a n-side and a k-side. A :class:`.ReferenceVertex` is instantiated for an attribute object of the n-side and it is allowd to connect to `k` k-side attribute objects (which were added to the GBN by :meth:`.initReferenceUncertainty`).
+
+
+    :arg refGbnV: :class:`.ReferenceVertex` instance
+    '''
+
+    # TODO : FIX THE CROSS VALIDATION. WE DON'T WANT TO QUERY K DIFFERENT FOLDS 
+    # WHEN UNROLLING. JUST ONE, THE TRAINING SET FOLD, AT THIS POINT WE ARE ONLY WORKING WITH ONE FOLD.
+    dsi = DI.DSI[0]  
     
+    #  uncertain dependency
+    dep = refGbnV.dependency
+
     for existdep in dep.uncertainRelationship.existAttribute.dependenciesChild:
 
-        dsi.loadExistParents(dep,existdep)
+        dsi.loadExistParents(refGbnV,existdep)
 
         # variables for code readability 
         k_entity_pk = dep.kAttribute.erClass.pk
@@ -461,9 +496,8 @@ def initReferenceUncertainty(dep):
         parent_pk = existdep.parent.erClass.pk
         len_parent_pk = len(parent_pk)
         end_parent_pk = len_k_entity_pk+len_parent_pk
-        
-        #  Add initial empty data structure the static ReferenceVertex.existParents
 
+            
 
         for row in dsi.resultSet():
             
@@ -477,7 +511,8 @@ def initReferenceUncertainty(dep):
             parent_obj = row[len_k_entity_pk:end_parent_pk]
             parent_val = row[-1]
             parent_ID = computeID(existdep.parent,parent_obj) 
-                                
+                
+            
 
             # Add the vertex to the GBN            
             if parent_ID not in GBN:
@@ -495,15 +530,15 @@ def initReferenceUncertainty(dep):
 
             # adding the exist parent information to a static dictionary accessible by all reference vertices
 
-            if k_entity_obj not in ReferenceVertex.existParents:
-                ReferenceVertex.existParents[k_entity_id] = {}
+            if k_entity_id not in refGbnV.existParents:
+                refGbnV.existParents[k_entity_id] = {}
             
-            if existdep.parent not in ReferenceVertex.existParents[k_entity_id]:
-                ReferenceVertex.existParents[k_entity_id][existdep.parent] = {}
+            if existdep.parent not in refGbnV.existParents[k_entity_id]:
+                refGbnV.existParents[k_entity_id][existdep.parent] = {}
 
-            ReferenceVertex.existParents[k_entity_id][existdep.parent][parent_ID] = GBN[parent_ID]
-
-
+            
+            refGbnV.existParents[k_entity_id][existdep.parent][parent_ID] = GBN[parent_ID]
+                
 
 
 

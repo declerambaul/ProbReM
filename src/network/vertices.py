@@ -1,4 +1,12 @@
+'''
+The ground Bayesian network implemented in :mod:`network.groundBN` consists of different kind of vertices implemented in :mod:`network.vertices`.
 
+* Standard GBN vertex :class:`.GBNvertex`
+* Reference Vertex :class:`.ReferenceVertex`
+
+'''
+
+import logging
 from analytics.performance import time_analysis
 
 
@@ -161,6 +169,19 @@ class GBNvertex():
         self.value = self.attr.CPD.sample(self.parentAss)
         
     
+    def conditionalDist(self):
+        '''
+        Returns the conditional probability distribution of the `gbnV` given its parent values.
+
+        .. todo::
+
+            In this branch I bypass the :mod:`.aggregation` module and implement weighted expectation directly into this method. The `aggregation` needs to be adapted and improved, until then it is less messier to do the aggregation directly here.
+
+        :arg gbnV: :class:`.GBN` instance
+        :returns: A `1 x |attr.domain|` numpy.array probability distribution
+        '''
+        return self.attr.CPD.conditionalDist(self)
+
 
     def parentAssignments(self):
         '''
@@ -180,6 +201,10 @@ class GBNvertex():
                 #we perform a runtime aggregation
                 paVals = [gbnV.value for gbnV in self.parents[dep.parent].values()]
                 agg_func = dep.aggregator('runtime')
+                
+                # logging.info('aggregation for %s'%self.ID)
+                # logging.info( 'parents : %s'%([v.ID for v in self.parents[dep.parent].values()]))
+                # logging.info( 'paVals : %s'%(paVals))
                                     
                 paAgg = agg_func(paVals)                
                 
@@ -237,37 +262,35 @@ class ReferenceVertex(GBNvertex):
     .. figure:: figures/ref_unc_ex.png
         :width: 60 %
 
-    Note:
+    .. note::
 
-    For now this works, but there is a problem.
+        For now this works, but there is a problem.
 
-    If there are multiple dependencies leading through the uncertain dependency dep, they all must use
-    the same mapping of course (i.e. the same exist attributes)
+        If there are multiple dependencies leading through the uncertain dependency dep, they all must use
+        the same mapping of course (i.e. the same exist attributes)
 
-    Student/Prof Example: 
-    If the 
-        student.success depends on Professor.fame  
-    and a
-        student.phd also depends on Professor.fame
+        Student/Prof Example: 
+        If the 
+            student.success depends on Professor.fame  
 
-    Assuming that we do inference for student1 on student.success and student.phd, then of course all exist attributes with student1 should be identical. This means that if we sample the exist attributes, then the edges for student.success and student.phd should be changed!
+        and a
 
-    At this point, a GBN reference vertex is associated with only 1 GBN vertex (e.g. student1.success) of the n-Entity. In reality it should be associated with 1 object (e.g. student1) of the n-Entity. 
+            student.phd also depends on Professor.fame
 
-    This is not hard to do::
+        Assuming that we do inference for student1 on student.success and student.phd, then of course all exist attributes with student1 should be identical. This means that if we sample the exist attributes, then the edges for student.success and student.phd should be changed!
 
-        `self.refGBNvertex` should be a dictionary holding all attribute objects (e.g. student.success.1 student.iq.1 and student) of a certain object (e.g. student.1)
+        At this point, a GBN reference vertex is associated with only 1 GBN vertex (e.g. student1.success) of the n-Entity. In reality it should be associated with 1 object (e.g. student1) of the n-Entity. 
 
-        `self.dependency = dep` should be a dictionary holding all uncertain dependencies 
+        This is not hard to do::
+
+            `self.refGBNvertex` should be a dictionary holding all attribute objects (e.g. student.success.1 student.iq.1 and student) of a certain object (e.g. student.1)
+
+            `self.dependency = dep` should be a dictionary holding all uncertain dependencies 
 
         
     '''
 
-    existParents = {}
-    '''
-    { key = k_entity_ID (e.g. Professor.2) : value = { key = parent.attr (e.g. prof.funding) : value = { key = parent.ID (e.g. 'prof.funding.2') : value = parent.Vertex (e.g. prof.funding.2.vertex)} }  }
-    '''   
-
+    
 
     def __init__(self, ID, gbnV ,dep):
                        
@@ -284,7 +307,7 @@ class ReferenceVertex(GBNvertex):
 
         self.refGBNvertex = gbnV
         '''
-        The referenced :class:`.GBNvertex` (which is on the `k` side of the `n:k` relationship)
+        The referenced :class:`.GBNvertex` (which is on the n-side of the `n:k` relationship)
         '''
         self.k = self.relationship.k
         '''
@@ -297,6 +320,12 @@ class ReferenceVertex(GBNvertex):
 
         The methods :meth:`.addReference`, :meth:`.removeReference` and :meth:`.replaceReference` can be used to manipulate this datastructure. 
         '''  
+
+        self.existParents = {}
+        '''
+        { key = k_entity_ID (e.g. Professor.2) : value = { key = parent.attr (e.g. prof.funding) : value = { key = parent.ID (e.g. 'prof.funding.2') : value = parent.Vertex (e.g. prof.funding.2.vertex)} }  }
+        '''   
+
         
            
     
@@ -350,14 +379,23 @@ class ReferenceVertex(GBNvertex):
             # objects. If `nIsParent()` is `True` for involved dependency, the added reference k attribute is
             # the child and we can add the edges in the GBN accordingly
             
+
+            logging.info('adding %s as parent of %s'%(self.refGBNvertex.ID,gbnV_new.ID))
+
+
             self.refGBNvertex.children[gbnV_new.attr][gbnV_new.ID] = gbnV_new
             gbnV_new.parents[self.refGBNvertex.attr][self.refGBNvertex.ID] = self.refGBNvertex
 
         else:
             
-            # print 'self.refGBNvertex',self.refGBNvertex
-            # print 'self.refGBNvertex',self.refGBNvertex.parents
-            # print 'gbnV_new', gbnV_new
+            # logging.info( 'self.refGBNvertex',self.refGBNvertex)
+            # logging.info( 'self.refGBNvertex',self.refGBNvertex.parents)
+            # logging.info( 'gbnV_new', gbnV_new)
+
+            # import pdb; pdb.set_trace()
+
+            # logging.info( 'parents of %s : %s'%(self.refGBNvertex.ID,[v.ID for pas in self.refGBNvertex.parents.values() for v in pas.values()]))
+            # logging.info( 'adding %s as parent of %s'%(gbnV_new.ID,self.refGBNvertex.ID))
 
             self.refGBNvertex.parents[gbnV_new.attr][gbnV_new.ID] = gbnV_new
             gbnV_new.children[self.refGBNvertex.attr][self.refGBNvertex.ID] = self.refGBNvertex
@@ -400,7 +438,7 @@ class ReferenceVertex(GBNvertex):
             if dep.aggregator is None:
                 #there should be only one parent value in this case
 
-                paVal = ReferenceVertex.existParents[k_gbnV_erID][dep.parent].values()   
+                paVal = self.existParents[k_gbnV_erID][dep.parent].values()   
                 
                 # Just for debugging, when the model is proper that should never happen: comment out for performance
                 # if len(paVal) != 1:    
@@ -409,7 +447,7 @@ class ReferenceVertex(GBNvertex):
                 parentAss.append(paVal[0].value)
             else:
                 #we perform a runtime aggregation
-                paVals = [gbnV.value for gbnV in ReferenceVertex.existparents[k_gbnV_erID][dep.parent].values()]
+                paVals = [gbnV.value for gbnV in self.existparents[k_gbnV_erID][dep.parent].values()]
                 agg_func = dep.aggregator('runtime')
                                     
                 paAgg = agg_func(paVals)                

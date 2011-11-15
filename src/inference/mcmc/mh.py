@@ -32,7 +32,7 @@ BURNIN = 0
 
 # ITER = 4
 #ITER = 30000
-ITER = 1000
+ITER = 10
 '''Number of samples to collect
 '''
 
@@ -102,13 +102,20 @@ def mcmcStep():
 
 
         # If the vertex is a reference vertex, we apply a MH step
-        if isinstance(gbnV,ReferenceVertex):
+        if isinstance(gbnV,ReferenceVertex):            
+
+            # logging.info('mhStep, references')
+            # logging.info(gbnV.references.keys())
+
             mhStep(gbnV)
             
 
         # If the vertex is a normal vertex, we apply a Gibbs step
         else:
             
+            # logging.info('gibbsStep, parents')
+            # logging.info(gbnV.parents.values())
+
             gibbsStep(gbnV)
 
     # for attrS,gbnVs in engine.GBN.samplingVerticesByAttribute.items():
@@ -135,43 +142,49 @@ def mcmcStep():
 
 
 @time_analysis
-def mhStep(gbnV):
+def mhStep(refGbnV):
 
     '''
     Performs a Metropolis Hastings step on the :class:`ReferenceVertex` argument.    
     
-    :arg gbnV: :class:`ReferenceVertex` instance    
+    :arg refGbnV: :class:`ReferenceVertex` instance    
     '''
 
     '''
-    for now, we assume k=1
+    simple sampler
+
 
     '''
-    # the first and only reference, e.g. Professor.1 (k=1)
-    old = gbnV.references.values()[0] 
+
+    # uniformly choose one reference to replace
+    old = random.choice(refGbnV.references.values()) 
 
     # select a new proposal
-    new = random.choice(engine.GBN.allByAttribute[gbnV.dependency.kAttribute])    
+    found=False
+    while not found:
+        new = random.choice(engine.GBN.allByAttribute[refGbnV.dependency.kAttribute])   
+        if new.erID not in refGbnV.references:
+            found = True  
     
     #  the row indices of the CPD entries for the parent assignments
 
-    # logging.info('gbnV = %s'%gbnV.ID)
-    # logging.info('gbnV.parentAssignments(old) = %s'%gbnV.parentAssignments(old))
-    # logging.info('old parentIndex = %s'%gbnV.attr.CPD.indexRow(gbnV.parentAssignments(old)))
+    # logging.info('refGbnV = %s'%refGbnV.ID)
+    # logging.info('refGbnV.parentAssignments(old) = %s'%refGbnV.parentAssignments(old))
+    # logging.info('old parentIndex = %s'%refGbnV.attr.CPD.indexRow(refGbnV.parentAssignments(old)))
 
-    # logging.info('gbnV.parentAssignments(new) = %s'%gbnV.parentAssignments(new))
-    # logging.info('new parentIndex = %s'%gbnV.attr.CPD.indexRow(gbnV.parentAssignments(new)))
+    # logging.info('refGbnV.parentAssignments(new) = %s'%refGbnV.parentAssignments(new))
+    # logging.info('new parentIndex = %s'%refGbnV.attr.CPD.indexRow(refGbnV.parentAssignments(new)))
 
-    old_pa = gbnV.attr.CPD.indexRow(gbnV.parentAssignments(old))
-    new_pa = gbnV.attr.CPD.indexRow(gbnV.parentAssignments(new))
+    old_pa = refGbnV.attr.CPD.indexRow(refGbnV.parentAssignments(old))
+    new_pa = refGbnV.attr.CPD.indexRow(refGbnV.parentAssignments(new))
     
     
     # extract the probabilities from the CPD to calculate tha acceptance probability
-    p_old0 = gbnV.attr.CPD.cpdMatrix[old_pa,0]
-    p_new1 = gbnV.attr.CPD.cpdMatrix[new_pa,1]
+    p_old0 = refGbnV.attr.CPD.cpdMatrix[old_pa,0]
+    p_new1 = refGbnV.attr.CPD.cpdMatrix[new_pa,1]
 
-    p_old1 = gbnV.attr.CPD.cpdMatrix[old_pa,1]
-    p_new0 = gbnV.attr.CPD.cpdMatrix[new_pa,0]
+    p_old1 = refGbnV.attr.CPD.cpdMatrix[old_pa,1]
+    p_new0 = refGbnV.attr.CPD.cpdMatrix[new_pa,0]
 
     # acceptance probability
     alpha = p_old0*p_new1/(p_old1*p_new0)
@@ -186,7 +199,7 @@ def mhStep(gbnV):
 
     # check whether to accept the proposal
     if u <= alpha:
-        gbnV.replaceReference(gbnV_new=new,gbnV_old=old)
+        refGbnV.replaceReference(gbnV_new=new,gbnV_old=old)
 
     #     logging.info('Accepted new proposal')
     # else:
@@ -217,9 +230,17 @@ def gibbsStep(gbnV):
 
     ri = gbnV.attr.CPD.indexRow(gbnV.parentAss)
 
+    # logging.info('---')
+    # logging.info('old cond dist %s'%gbnV.attr.CPD.cpdMatrix[ri,:])
+    
+    # logging.info('new cond dist %s'% gbnV.conditionalDist())
+
     #The local distribution factor of the full conditional
     fc = fc * gbnV.attr.CPD.cpdMatrix[ri,:]
     # fcLog +=  gbnV.attr.CPD.cpdLogMatrix[ri,:]
+
+    # fc = fc * gbnV.conditionalDist()
+
 
 
           
@@ -394,10 +415,23 @@ def initializeVertices():
 
             # remove all ref
             gbnV.removeAllReferences()
-            
-            kGBNv = random.choice(engine.GBN.allByAttribute[gbnV.dependency.kAttribute])                    
+        
+            # Initialize the edges for all k connections
+            k = 0
+            while k < gbnV.k:                
+                
+                # choose one k-entity object
+                # TODO sample it from proposal distribution.... 
+                # choose uniformly for now (i.e. = Pasula paper)
 
-            gbnV.addReference(kGBNv)
+                kGBNv = random.choice(engine.GBN.allByAttribute[gbnV.dependency.kAttribute])   
+                
+                if kGBNv.erID not in gbnV.references:            
+                    gbnV.addReference(kGBNv)
+                    k+=1
+
+            # logging.info('Initial references of %s'%gbnV.ID)
+            # logging.info(gbnV.references)
 
             
         # If the vertex is a normal vertex, we apply a Gibbs step
@@ -461,6 +495,8 @@ def configure():
                         likRowIndex = clf.indexRow(condAss)
                         likColumnIndex = attr.parents[ip].indexingValue(likAss)
                         #setting the probability and log prob values
+
+
                         clf.likMatrix[likRowIndex,likColumnIndex] = attr.CPD.cpdMatrix[i,j]
                         clf.likLogMatrix[likRowIndex,likColumnIndex] = attr.CPD.cpdLogMatrix[i,j]
                 

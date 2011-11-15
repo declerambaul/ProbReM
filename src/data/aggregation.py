@@ -15,6 +15,16 @@ simply returns the SQL keyword `AVG`.
     
 '''
 
+'''
+########################################################################################################################
+WEIGHTED EXPECTATION AGGREGATOR
+'''
+
+def runtime_avg(gbn):
+    '''
+    The weighted expecation aggregation 
+    '''
+
 
 '''
 ########################################################################################################################
@@ -90,9 +100,10 @@ def runtime_mode(values):
     '''
     Compute mode of all values
     '''
+    raise Exception("Implement It!")
     return None
     
-SQLite_keyword = "DOESN'T EXIST"
+SQLite_keyword = "N/A"
 
 mode_dict = {'SQLite':SQLite_keyword,'runtime':runtime_mode}
 

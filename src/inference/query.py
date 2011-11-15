@@ -77,7 +77,7 @@ class ObjsVariable():
     
     
     
-    :attr:`.pkValues` is a list of primary keys of the attribute class that the :class:`.Qvariable` instance is associated with. The :attr:`.constraint` allows to specify a subset of all attribute objects in an expressive manner
+    :attr:`.pkValues` is a list of primary keys of the attribute class that the :class:`.Qvariable` instance is associated with. The :attr:`.ObjsVariable.constraint` allows to specify a subset of all attribute objects in an expressive manner
         
         * inclusive 'incl' : only these attribute objects
         * exclusive 'excl' : all but these attribute objects

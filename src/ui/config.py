@@ -80,15 +80,12 @@ def loadInferenceAlgorithm(inferenceType):
 	"""
 	Loads the specified inference algorithm for the engine :mod:`~!.engine` and configures it to use `inferenceType` (e.g. MCMC,LW).
 	
-	Usually an inference algorithm implements a `configure()` method that can be used to 
-	precompute data structures needed for inference.
-    In the case of the Gibbs sampler, :mod:`.gibbs.configure` will precompute all the conditional likelihood
-    functions of the attributes with parents. Note that at the time a inference method is configured,
-    the PRM should be initialized with proper local distributions (either learned or loaded).
+	Usually an inference algorithm implements a `configure()` method that can be used to precompute data structures needed for inference.
+    In the case of the Gibbs sampler, :mod:`.gibbs.configure` will precompute all the conditional likelihood functions of the attributes with parents. Note that at the time a inference method is configured, the PRM should be initialized with proper local distributions (either learned or loaded).
 	
-	:arg inferenceType: The name of the inference method class (e.g. `GIBBS`)	
-    
+	:arg inferenceType: The name of the inference method (e.g. `GIBBS` or `MH`)	
 	"""
+	
 	if inferenceType == 'GIBBS':
 	    from inference.mcmc import gibbs 
 	    engine.inferenceAlgo = gibbs

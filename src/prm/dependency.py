@@ -51,8 +51,7 @@ class Dependency():
         self.slotchain_erclass_exclusive = {}
         '''
         Special Dictionary representation of the slotchain. The key is an Entity, and the value
-        is basically `self.slotchain_attr_string` without all entries that contain the key entity
-         {key = :class:`.ERClass` : value = list of string constraints }. 
+        is basically `self.slotchain_attr_string` without all entries that contain the key entity {key = :class:`.ERClass` : value = list of string constraints }. 
         '''
 
         #we compute the slotchain associated with this dependency in case no constraint has been defined. Otherwise we extract the slotchain from the constraint        

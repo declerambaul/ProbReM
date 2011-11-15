@@ -4,12 +4,12 @@ The model parameters in a ProbReM project are the `conditional probability distr
 .. inheritance-diagram:: prm.localdistribution
 '''
 
-#import prm.PRM
+import logging
 
 #from pylab import * 
 import numpy as N
 
-from itertools import izip,count 
+from itertools import izip,count,product 
 
 from analytics.performance import time_analysis
 
@@ -26,8 +26,7 @@ class CPD():
         self.attr = attr
         """The :class:`.Attribute` that the CPD is associated with
         """
-        
-    
+            
     
     def sample(self,paAssignment):
         """        
@@ -47,6 +46,9 @@ class CPD():
         """Saves the CPD to disk
         """
         raise Exception('saving of CPD not supported for %s'%(self.__class__.__name__))
+
+    def conditionalDist(self,gbnV):
+        raise Exception('Conditional Distribution not implemented for %s'%(self.__class__.__name__))
     
     
 class CPDTabular(CPD):
@@ -57,6 +59,11 @@ class CPDTabular(CPD):
     * `n` is the cardinalitiy of the attribute domain :math:`|V(attr)|`
     
     This matrix grows exponentially with the number of parents, thus not suited for large V-Structures.
+
+    .. todo::
+
+        The rows of the `CPDTabular.cpdMatrix` are the possible parent assignments. Naturally the ordering of indexing matters, and it depends on the order of the attributes in the `attr.parents` list (it is set in :meth:`.PRMparser.start_element`). The order in which the dependencies in the model specification are defined sets the order of the `attr.parents`. The problem is that when the CPDs are loaded from file, but the specification of the dependencies changed, it is possible that the CPD is incorrect.
+
     """
     
     def __init__(self, attr):
@@ -149,6 +156,49 @@ class CPDTabular(CPD):
             index += mult * self.attr.parents[i].indexingValue(value)                    
             
         return int(index)
+
+    
+
+
+    def conditionalDist(self,gbnV):
+        '''
+        Returns the conditional probability distribution of the `gbnV` given its parent values.
+
+        .. todo::
+
+            In this branch I bypass the :mod:`.aggregation` module and implement weighted expectation directly into this method. The `aggregation` needs to be adapted and improved, until then it is less messier to do the aggregation directly here.
+
+        :arg gbnV: :class:`.GBN` instance
+        :returns: A `1 x |attr.domain|` numpy.array probability distribution
+        '''
+
+        condProp = N.zeros( [1, gbnV.attr.cardinality] ) 
+
+        
+
+        #  a list of lists
+        #  every sublist contains all gbnVs of a parent attribute.
+        #  the list is in the correct order (according to gbnV.attr.parents)
+        sparse_exist =  [ [gbnPa.value for gbnPa in gbnV.parents[dep.parent].values()]  for dep in gbnV.attr.dependenciesChild ]
+        
+
+        spase_iter = product(*sparse_exist)
+
+
+        # logging.info([ ['%s = %s'%(gbnPa.ID,gbnPa.value) for gbnPa in gbnV.parents[dep.parent].values()]  for dep in gbnV.attr.dependenciesChild ])
+
+        for paAss in spase_iter:
+
+            i = self.indexRow(paAss)
+            
+            condProp += self.cpdMatrix[i,:] 
+
+            # logging.info('paAss : %s\ndist : %s\nupdated condDist: %s'%(paAss,self.cpdMatrix[i,:] ,(condProp / condProp.sum())))
+
+        
+        return condProp / condProp.sum()
+        
+
     
     def reverseIndexRow(self,index):
         '''
@@ -229,14 +279,14 @@ class CPDTabular(CPD):
         if len(self.attr.parents)!=0:
             fname = '%s_%s'%(fname,''.join([pa.name for pa in self.attr.parents]))
         locDistPath = '%s/%s'%(relPath,fname)
-        #print 'Saving CPDmatrix.npy and attrname.xml for %s to %s -> include reference in PRM xml'%(self.attr.name,locDistPath)
+        # logging.info('Saving CPDmatrix.npy and attrname.xml for %s to %s -> include reference in PRM xml'%(self.attr.name,locDistPath))
         N.save(locDistPath,self.cpdMatrix)
         locDistXML = "<?xml version='1.0' standalone='no' ?><LocalDistribution attribute='%s'><TabularCPD file='%s.npy'/></LocalDistribution>"%(self.attr.fullname,locDistPath)
         xmlFile = open('%s.xml'%(locDistPath), 'w')
         xmlFile.write(locDistXML)
         xmlFile.close()
         #print 'Tag for cpd in prm xml specification:\n%s'%("<LocalDistribution attribute='%s' file='%s.xml'/>"%(self.attr.name,locDistPath))
-        print "<LocalDistribution attribute='%s' file='%s.xml'/>"%(self.attr.fullname,locDistPath)
+        logging.info("<LocalDistribution attribute='%s' file='%s.xml'/>"%(self.attr.fullname,locDistPath))
         
         
 class CPDTree(CPD):

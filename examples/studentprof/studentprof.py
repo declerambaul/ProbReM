@@ -1,8 +1,9 @@
 '''
+Run this script in ipython
+
 Reference Uncertainty
 
 Student-Professor example from the Pasula/Stuart paper
-
 '''
 import sys
 import logging
@@ -89,12 +90,12 @@ query = Query(event,evidence)
 
 
 #  setting inference parameters
-mcmcInference.ITER = 1000
-mcmcInference.BURNIN = 200
+mcmcInference.ITER = 500
+mcmcInference.BURNIN = 0
 mcmcInference.CHAINS = 3
 
 
-# probrem.engine.infer(query)
+probrem.engine.infer(query)
 
 
 # convenience
@@ -112,24 +113,11 @@ def showCumMean():
 
 
 
-def compSucces():
-
-	s = GBN['Student.success.1']
-	mcmcInference.posterior.plotCumulativeMeanAllChains(gbnV=s)
-
-	a = 0.7*0.2*0.8*0.4+0.2*0.2*0.8*0.4+0.2*0.8*0.8*0.6
-	b = 0.3*0.2*0.8*0.4+0.8*0.2*0.8*0.4+0.8*0.8*0.8*0.6
-	d = a/(a+b)
-
-	f = mcmcInference.posterior.PL.gcf()
-	f.axes[0].axhline(d)
-	
-
 
 
 # cmd.displayCPDs()
 
-# showCumMean()
+showCumMean()
 
 
 '''
@@ -155,4 +143,4 @@ Pub Dataset
 #performance.displayTimeAnalysis()
 
 # to display the current GBN 
-#visualization.displayGraph(probrem.engine.GBN)
+# visualization.displayGraph(probrem.engine.GBN)

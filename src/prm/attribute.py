@@ -14,15 +14,9 @@ All attributes are instantiated by calling the :meth:`~prm.attribute.attributeFa
 '''
 
  
-def attributeFactory(name, er, type, attrDef, probabilistic=True, hidden=False ):
-    
-      
+def attributeFactory(name, er, type, attrDef, probabilistic=True, hidden=False ):          
     '''
-    can't put functions in the value
-    attribute = {'Binary' : BinaryAttribute( name, er, hidden=False) ,
-                'Enumerated' : EnumeratedAttribute( name, er, attrValues=attrDef, hidden=False),
-                'Integer' : IntegerAttribute( name, er, attrRange=attrDef, hidden=False)}
-    return attribute[type]
+    Returns an instance of the attribute of type `type`.    
     '''
     #print "attributeFactory():", name, er, type, attrDef, hidden, probabilistic  
     

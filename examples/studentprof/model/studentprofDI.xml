@@ -9,14 +9,12 @@
 -->
 <DataInterface name="StudentProfDI">
 	<Crossvalidation folds='1'>		
-		<!--
-		
+		<!--				
 		<Dataset type='SQLite' path='data/sqlite/studentprof_refun.sqlite'/>
-
 		<Dataset type='SQLite' path='data/sqlite/studentprof.sqlite'/>
-		
-		-->
 		<Dataset type='SQLite' path='data/sqlite/studentprof.180.sqlite'/>
+		-->
+		<Dataset type='SQLite' path='data/sqlite/studentprof_refun.sqlite'/>
 
 
 	</Crossvalidation>

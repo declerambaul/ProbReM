@@ -4,11 +4,8 @@
 .. automodule:: network.groundBN
     :members:
 
-:mod:`~!network.referenceuncertainty` module
----------------------------------------------
-
-.. automodule:: network.referenceuncertainty
-    :members:  
+.. automodule:: network.vertices
+    :members:
 
   
 '''

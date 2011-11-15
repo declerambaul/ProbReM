@@ -201,12 +201,12 @@ class GBNGraph(dict):
             '''
             s = ''
             for attr,gbnvs in gbndict.items():
-                s += '%s (%s),'%(attr.fullname,len(gbnvs))
+                s += '\t%s (%s)\n'%(attr.fullname,len(gbnvs))
             return s[:-1]
 
         
-        rep += 'All      : %s vertices\n\t%s\n'%(len(self),prettyStat(self.allByAttribute))
-        rep += 'Sampling : %s vertices\n\t%s\n'%(len(self.samplingVertices),prettyStat(self.samplingVerticesByAttribute))            
+        rep += 'All      : %s vertices\n%s\n'%(len(self),prettyStat(self.allByAttribute))
+        rep += 'Sampling : %s vertices\n%s\n'%(len(self.samplingVertices),prettyStat(self.samplingVerticesByAttribute))            
 
 
         return rep[:-1] #don't return last '\n'

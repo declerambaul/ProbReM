@@ -559,18 +559,21 @@ class SQLiteDI(DataSetInterface):
         
         self.cur.execute(sqlQuery)
 
-    def loadExistParents(self, dep, existdep ):
+    def loadExistParents(self, refGbnV, existdep ):
         '''
-        In the case of reference uncertainty, the exist attributes have a set of parents that need to be included in the ground Bayesian network. The SQL query needed is constructed in this method, the resultset will be of the following format. The `k-entity` references the entity on the `k` side of the `n:k` relationship (i.e. `Professor` in the student/prof example from Pasula). The primary key of the `k-entity` is used to identify 
+        In the case of reference uncertainty, the exist attributes have a set of parents that need to be included in the ground Bayesian network. The SQL query needed is constructed in this method, the resultset will be of the following format. The `k-entity` references the entity on the `k` side of the `n:k` relationship (i.e. `Professor` in the student/prof example from Pasula). The primary key of the `k-entity` is used as identifier.
 
         
         |   k_entity.pk1,  dep.parent.pk1,dep.parent.pk2,.....,dep.parent.val
         |   < k entity id >< parent indentification >         < parent value > 
 
-        :arg dep: :class:`.UncertainDependency`
+        :arg refGbnV: :class:`.ReferenceVertex`
         :arg existdep: :class:`.Dependency` with the exist attribute as child
         '''
 
+        #  uncertain dependency
+        dep = refGbnV.dependency
+    
 
         k_attr_id = ",".join( [pk.fullname for pk in dep.kAttribute.erClass.pk ])
         parent_id = ",".join( [pk.fullname for pk in existdep.parent.erClass.pk ])
@@ -579,24 +582,46 @@ class SQLiteDI(DataSetInterface):
 
         sqlAttribute = '%s,%s,%s'%(k_attr_id,parent_id,parent_val)
         
+          
+
         tables = []
         for er in existdep.slotchain:
             if not er==dep.uncertainRelationship:
                 # there are no entries in the database table of the uncertain relationship
                 tables.append(er.name)
+        
+        #  add k entity if not already in tables 
+        if dep.kAttribute.erClass.name not in tables:
+            tables.append(dep.kAttribute.erClass.name)
+
+
         sqlTable = ','.join(tables)
 
+    
+
+        # where clause
+        where = []
+
+        if dep.nAttribute.erClass.name in tables:
+            # if the n-side is in the FROM tables, then the exist dependency 'exits' through the n-side. Only the parents for the n-side attribute object that is referenced by the referenceVertex have to be loaded
+            gbnV = refGbnV.refGBNvertex        
+            for (pk_i,obj_i) in zip(gbnV.attr.erClass.pk,gbnV.obj):
+                where.append('%s=%s'%(pk_i.fullname,obj_i))
 
         if not len(existdep.slotchain_erclass_exclusive[dep.uncertainRelationship]) == 0:
-            sqlWhere = ' AND '.join(existdep.slotchain_erclass_exclusive[dep.uncertainRelationship])
-
-            sqlQuery = 'SELECT %s FROM %s WHERE %s;'%(sqlAttribute,sqlTable,sqlWhere)
-                
-        else:
+            # as the uncertain relationship doesn't contain any data, only the slotchain entries that don't contain it are needed in the whereclause
+            where.extend(existdep.slotchain_erclass_exclusive[dep.uncertainRelationship])
+            
+        if where == []:
             # no where statements
             sqlQuery = 'SELECT %s FROM %s;'%(sqlAttribute,sqlTable)
-        
+        else:
+            sqlWhere = ' AND '.join(where)
+            sqlQuery = 'SELECT %s FROM %s WHERE %s;'%(sqlAttribute,sqlTable,sqlWhere)
+
+                       
         logging.debug(sqlQuery)
+
         
         self.cur.execute(sqlQuery)
 

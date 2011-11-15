@@ -11,7 +11,7 @@ A Probabilistic Relational Model (PRM), [1]_, [2]_, is a directed probabilistic 
 |probrem| is built on the DAPER specification of a PRM, thus it requires the data to be modelled with a entity-relationship diagram. The  probabilistic structure defines the dependencies among the probabilistic attributes of the entity-relationship model. 
 The parent and the child attribute of a dependency can be associated with different entities or relationships; Getoor et al. refer to the path from child to parent attribute the *slotchain* whereas Heckerman et al. associate a more general *constraint* with the dependency instead.  The traditional *slotchain* is the most common *constraint*, |probrem| makes use of both expressions depending which one is more appropriate in the context.
 Relationships are either of type `1:n` or `m:n`, therefore it is possible that attribute objects have multiple parent attribute objects for the same probabilistic dependency. Aggregation of the parent attribute objects is a common way to deal with this problem, |probrem| allows to define `generic aggregation functions` (avg, min, max).
-Different inference methods have been implemented, all of which are based on `Markov Chain Monte Carlo <http://en.wikipedia.org/wiki/Markov_chain_Monte_Carlo>`_ methods. The paper `An Approach to Inference in Probabilistic Relational Models using Block Sampling` [6]_ - the first publication making use of |probrem| - details the basic inference algorithm used. Please see :ref:`Extensions <extensions>` for current and future work. 
+Different inference methods have been implemented, all of which are based on `Markov Chain Monte Carlo <http://en.wikipedia.org/wiki/Markov_chain_Monte_Carlo>`_ methods. 
 
 The section :ref:`Using ProbReM<using_probrem>` illustrates the approach used in |probrem|, and the :ref:`example model<example_model>` is a walkthrough with an applied example. For theoretical background, we recommend `Introduction to Statistical Relational Learning` [3]_ by Lise Getoor \& Ben Taskar for an excellent introduction to the different approaches introduced in the SRL field. For more background on using `MCMC` in graphical models, D. Koller \& N. Friedman's `Probabilistic Graphical Models: Principles and Techniques` [5]_ is an excellent reference.
 
@@ -32,12 +32,23 @@ Many different approaches are pursued in relational learning, below an incomplet
 For a more complete list and more information and about other frameworks, `Manfred Jaeger <http://www.cs.aau.dk/~jaeger/>`_ has started a `Comparative Study of Probabilistic Logic Languages and Systems <http://www.cs.aau.dk/~jaeger/plsystems/>`_ that serves as platform to compare different approaches on different challenge problems. 
 
 
-.. _publications:
+.. _requirements:
 
-Publications
+Requirements
 ^^^^^^^^^^^^^^^^^^^^
+* `Python <www.python.com>`_
+* Numpy / Scipy
+* Matplotlib / Pylab
+* iPython
 
-* Kaelin, Fabian and Precup, Doina. An Approach to Inference in Probabilistic Relational Models using Block Sampling. Asian Conference on Machine Learning, 2010. 325-340.
+
+.. _installing_Probrem:
+
+Source code
+^^^^^^^^^^^^^^^^^^^^
+It is hard to draw a line between the core functionality of the framework and the functionality needed by a specific |probrem| project. For this reason the source code will be provided as a folder and the framework has to be added to the `PYTHONPATH` of the |probrem| project. In the future it might be useful to create a proper Python package. The code is available as is on `github <http://www.wikihow.com/Be-Patient>`_ .
+    
+See :ref:`Using ProbReM<using_probrem>` for how to start a new project.
 
 
 
@@ -66,7 +77,8 @@ References
     D. Koller and N. Friedman. Probabilistic Graphical Models: 
     Principles and Techniques. MIT Press, 2009.
 
-.. [6]
-    Kaelin, Fabian and Precup, Doina. An Approach to Inference in Probabilistic Relational Models using 
-    Block Sampling. Asian Conference on Machine Learning, 2010. 325-340.
+..
+    .. [6]
+        Kaelin, Fabian and Precup, Doina. An Approach to Inference in Probabilistic Relational Models using 
+        Block Sampling. Asian Conference on Machine Learning, 2010. 325-340.
 
